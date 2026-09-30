@@ -160,8 +160,16 @@ static void mgmt_netif_init(const uint8_t sta_mac[6])
         .stack = ESP_NETIF_NETSTACK_DEFAULT_ETH,
     };
     s_mgmt = esp_netif_new(&cfg);
+    /* base.mac is not copied into the lwIP netif: without this every frame
+     * the WT32 sends (and the sender address in its ARP) says 00:00:00:00:00:00,
+     * which the access point drops. The Ethernet and Wi-Fi glue do the same. */
+    uint8_t mac[6];
+    memcpy(mac, sta_mac, 6);
+    ESP_ERROR_CHECK(esp_netif_set_mac(s_mgmt, mac));
     esp_netif_action_start(s_mgmt, NULL, 0, NULL);
     esp_netif_action_connected(s_mgmt, NULL, 0, NULL);
+    esp_netif_get_mac(s_mgmt, mac);        /* what lwIP actually sends with */
+    ESP_LOGI(TAG, "management interface MAC " MACSTR, MAC2STR(mac));
 }
 
 /* Follow the device's address: the WT32 answers on the same IP. Until it is
