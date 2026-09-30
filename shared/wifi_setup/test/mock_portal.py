@@ -35,6 +35,7 @@ class H(http.server.BaseHTTPRequestHandler):
         if self.path == '/auth.js': return self.send(200, AUTHJS, 'application/javascript')
         if self.path == '/ota.js': return self.send(200, OTAJS, 'application/javascript')
         if self.path.startswith('/i18n.json'): return self.send(200, L.response(self.path))
+        if self.path == '/_lang': return self.send(200, {"saved": L.saved})         # test hook
         if not self.authed(): return self.send(401, L.err('err.loginRequired', auth=False))
         if self.path == '/api/status': return self.send(200, dict(STATUS, defaultPassword=state['default']))
         if self.path == '/api/scan': return self.send(200, [{"ssid":"Home","rssi":-50,"open":False}])
@@ -51,6 +52,7 @@ class H(http.server.BaseHTTPRequestHandler):
             if f.get('old') != state['pw']: return self.send(400, L.err('err.theCurrentPasswordIsWrong'))
             state.update(pw=f['new'], default=False); state['sessions'] = {self.sid()}
             return self.send(200, {"ok":True})
+        if self.path == '/api/lang': return self.send(*L.post_lang(f))
         if self.path == '/api/logout':
             state['sessions'].discard(self.sid()); return self.send(200, {"ok":True})
         return self.send(200, {"ok":True})

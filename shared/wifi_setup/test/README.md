@@ -7,7 +7,7 @@ The WT32 page (with modes) has its own tests in `wt32/test/`; `i18n_flow.js` fro
 `auth.js` + the app page against a mock API (`mock_portal.py` mimics the behaviour of `setup_portal.c` / `portal_auth.c`; `mock_i18n.py` serves `/i18n.json` and keyed errors from the same `i18n/<code>.json` files the firmware is built with):
 
 - `login_flow.js`: a single login form for parallel 401s, wrong password, login with `12345678`, the default-password warning, password change, logout and login with the new password;
-- `i18n_flow.js`: the language switch on the login form, a device error in the chosen language, no English left on the page in Ukrainian and no Cyrillic in English, the choice kept after a reload, the browser's language as the default, the firmware info (version, build time, commit, SHA-256).
+- `i18n_flow.js`: the browser's language while the device has none, the first login saving it on the device, the device's language for a new browser, the switch on the login form (sent to the device after the login), a device error in the chosen language, no English left on the page in Ukrainian and no Cyrillic in English, the choice kept after a reload, the firmware info (version, build time, commit, SHA-256).
 
 ```bash
 cd shared/wifi_setup/test

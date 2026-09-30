@@ -45,6 +45,7 @@ class H(http.server.BaseHTTPRequestHandler):
         if self.path == '/ota.js': return self.send(200, OTAJS, 'application/javascript')
         if self.path == '/script.js': return self.send(200, SCRIPTJS, 'application/javascript')
         if self.path.startswith('/i18n.json'): return self.send(200, L.response(self.path))
+        if self.path == '/_lang': return self.send(200, {"saved": L.saved})         # test hook
         if self.path == '/_restart':                       # test hook: apply saved mode
             st['mode'] = st['saved_mode']; return self.send(200, {"ok": True})
         if self.path == '/_fallback':                      # test hook: no DHCP on the cable
@@ -115,6 +116,7 @@ class H(http.server.BaseHTTPRequestHandler):
             s = secrets.token_hex(16); st['sessions'].add(s)
             return self.send(200, {"ok":True,"defaultPassword":True}, hdrs=[('Set-Cookie', f'sid={s}; Path=/')])
         if self.sid() not in st['sessions']: return self.send(401, L.err('err.loginRequired', auth=False))
+        if self.path == '/api/lang': return self.send(*L.post_lang(f))
         st['log'].append([self.path, f])
         if self.path == '/api/own':
             p = f.get('pass') or st['own']['pass']

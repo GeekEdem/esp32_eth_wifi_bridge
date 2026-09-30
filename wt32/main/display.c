@@ -23,6 +23,9 @@ static display_config_t s_cfg;
 static i2c_master_dev_handle_t s_dev;       /* NULL: no display */
 static uint8_t s_fb[UI_FB_SIZE];
 static ui_info_t s_info;
+static portMUX_TYPE s_texts_lock = portMUX_INITIALIZER_UNLOCKED;
+static const char *s_texts_new;             /* a language waiting for the display task */
+static size_t s_texts_new_len;
 
 static esp_err_t cmds(const uint8_t *c, size_t n)
 {
@@ -125,6 +128,27 @@ static void notice(const char *title, const char *l1, const char *l2)
     flush();
 }
 
+void display_set_texts(const char *json, size_t len)
+{
+    portENTER_CRITICAL(&s_texts_lock);
+    s_texts_new = json;
+    s_texts_new_len = len;
+    portEXIT_CRITICAL(&s_texts_lock);
+}
+
+/* In the display task only: ui_* keep the texts in static storage. */
+static void take_texts(void)
+{
+    portENTER_CRITICAL(&s_texts_lock);
+    const char *json = s_texts_new;
+    size_t len = s_texts_new_len;
+    s_texts_new = NULL;
+    portEXIT_CRITICAL(&s_texts_lock);
+    if (json && ui_set_texts(json, len) < 0) {
+        ESP_LOGW(TAG, "language texts unreadable, keeping the previous ones");
+    }
+}
+
 static void ui_task(void *arg)
 {
     btn_t b;
@@ -137,6 +161,10 @@ static void ui_task(void *arg)
 
     while (true) {
         vTaskDelay(pdMS_TO_TICKS(TICK_MS));
+        if (s_texts_new) {
+            take_texts();
+            next_draw = now_ms();                   /* redraw in the new language */
+        }
         t = now_ms();
         bool down = s_cfg.button_gpio >= 0 && gpio_get_level(s_cfg.button_gpio) == 0;
         btn_event_t ev = btn_update(&b, down, t);
@@ -170,12 +198,12 @@ static void ui_task(void *arg)
             break;
         case BTN_SETUP:
             ESP_LOGW(TAG, "button held 5 s: one-time setup start");
-            notice("Налаштування", "Перезапуск з точкою", "налаштування…");
+            notice(ui_tr("disp.tSetup"), ui_tr("disp.restarting1"), ui_tr("disp.restarting2"));
             s_cfg.on_setup();
             break;
         case BTN_RESET:
             ESP_LOGW(TAG, "button held 10 s: reset of the settings");
-            notice("Скидання", "Стираю налаштування,", "перезапуск…");
+            notice(ui_tr("disp.tReset"), ui_tr("disp.erasing"), ui_tr("disp.restarting"));
             s_cfg.on_reset();
             break;
         default:
@@ -197,6 +225,9 @@ static void ui_task(void *arg)
 esp_err_t display_start(const display_config_t *cfg)
 {
     s_cfg = *cfg;
+    if (s_cfg.texts) {
+        display_set_texts(s_cfg.texts, s_cfg.texts_len);    /* the task takes it first */
+    }
     if (s_cfg.button_gpio >= 0) {
         gpio_config_t io = {
             .pin_bit_mask = 1ULL << s_cfg.button_gpio,

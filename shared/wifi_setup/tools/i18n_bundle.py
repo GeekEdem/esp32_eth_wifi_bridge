@@ -10,13 +10,15 @@ reference: every key must exist there, and a language that lacks a key gets
 the English text in the bundle.
 
 To add a language, put <code>.json next to en.json in the folders (at least the
-app's own one) and rebuild; the switch on the page lists it by itself.
+app's own one) and rebuild; the switch on the page lists it by itself. Keys
+"disp.*" are the WT32 display's texts: one line of 21 characters each (checked).
 
     i18n_bundle.py c OUT.c DIR...          C source with `portal_langs` (build step)
     i18n_bundle.py json OUTDIR DIR...      OUTDIR/<code>.json merged (test mocks)
     i18n_bundle.py check [--complete] DIR... [--sources FILE...]
         validate the files; with --sources also that every key used in them
-        (data-i18n*, t('...'), I18N.t('...'), error keys "err.*") exists;
+        (data-i18n*, t('...'), I18N.t('...'), error keys "err.*", display keys
+        "disp.*") exists;
         with --complete a text missing in a language is an error, not a warning
 """
 import glob
@@ -27,6 +29,11 @@ import sys
 
 META = ('_name', '_label')
 PLACEHOLDER = re.compile(r'\{(\w+)\}')
+KEY_MAX = 63                    # the display's JSON reader (wt32 disp_ui.c) takes keys up to this
+# "disp.*" texts go to a 21-character display line; placeholders count at a
+# typical width of their value
+DISP_COLS = 21
+DISP_WIDTH = {'n': 4, 'v': 8, 'speed': 3, 'd': 2, 'hm': 5, 't': 9}
 
 
 def load(dirs):
@@ -66,6 +73,13 @@ def validate(langs):
         for k, v in texts.items():
             if k in META:
                 continue
+            if len(k) > KEY_MAX:
+                errors.append('%s: key "%s" is longer than %d characters' % (code, k, KEY_MAX))
+            if k.startswith('disp.'):
+                width = len(PLACEHOLDER.sub(lambda m: 'x' * DISP_WIDTH.get(m.group(1), 4), v))
+                if width > DISP_COLS:
+                    errors.append('%s: "%s" = "%s" needs %d of the display\'s %d characters'
+                                  % (code, k, v, width, DISP_COLS))
             if k not in en:
                 errors.append('%s: "%s" is not in en.json (typo?)' % (code, k))
             elif set(PLACEHOLDER.findall(v)) != set(PLACEHOLDER.findall(en[k])):
@@ -108,7 +122,8 @@ def keys_used(paths):
     pats = [re.compile(r'data-i18n(?:-ph|-title)?="([\w.]+)"'),
             re.compile(r"""(?<![\w.])(?:I18N\.)?t\(\s*'([\w.]+)'"""),
             re.compile(r"""\btx\(\s*'[\w]+'\s*,\s*'([\w.]+)'"""),
-            re.compile(r'"(err\.\w+)"')]
+            re.compile(r'"(err\.\w+)"'),
+            re.compile(r'"(disp\.\w+)"')]
     for p in paths:
         src = open(p, encoding='utf-8').read()
         for pat in pats:

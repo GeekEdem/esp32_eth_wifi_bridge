@@ -2,6 +2,7 @@
 #include "disp_ui.h"
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 
 #include "button.h"
@@ -141,6 +142,196 @@ int ui_text(uint8_t *fb, int x, int y, const char *s, int max_chars, bool invert
     return n;
 }
 
+/* ---------- texts ---------- */
+
+#define TEXTS_MAX       96
+#define TEXTS_ARENA     3072
+
+static char s_arena[TEXTS_ARENA];
+static struct {
+    const char *key, *val;
+} s_texts[TEXTS_MAX];
+static int s_ntexts;
+
+static const char *skip_ws(const char *p, const char *end)
+{
+    while (p < end && (*p == ' ' || *p == '\n' || *p == '\r' || *p == '\t')) {
+        p++;
+    }
+    return p;
+}
+
+static int hex4(const char *p)
+{
+    int v = 0;
+    for (int i = 0; i < 4; i++) {
+        char c = p[i];
+        v <<= 4;
+        if (c >= '0' && c <= '9') v |= c - '0';
+        else if (c >= 'a' && c <= 'f') v |= c - 'a' + 10;
+        else if (c >= 'A' && c <= 'F') v |= c - 'A' + 10;
+        else return -1;
+    }
+    return v;
+}
+
+/* A JSON string at p (on the opening quote), unescaped into out (NUL added;
+ * out NULL: only skipped). Returns the position after the closing quote,
+ * NULL if malformed or too long. */
+static const char *json_string(const char *p, const char *end, char *out, size_t cap)
+{
+    if (p >= end || *p != '"') {
+        return NULL;
+    }
+    size_t n = 0;
+    for (p++; p < end && *p != '"'; p++) {
+        char enc[3];
+        size_t k = 0;
+        if (*p != '\\') {
+            enc[k++] = *p;                          /* raw UTF-8 bytes pass through */
+        } else if (++p >= end) {
+            return NULL;
+        } else if (*p == 'u') {
+            int v = end - p > 4 ? hex4(p + 1) : -1;
+            if (v < 0) {
+                return NULL;
+            }
+            p += 4;
+            if (v >= 0xD800 && v <= 0xDFFF) {
+                v = '?';                            /* no surrogate pairs (not in the font anyway) */
+            }
+            if (v < 0x80) {
+                enc[k++] = (char)v;
+            } else if (v < 0x800) {
+                enc[k++] = (char)(0xC0 | v >> 6);
+                enc[k++] = (char)(0x80 | (v & 0x3F));
+            } else {
+                enc[k++] = (char)(0xE0 | v >> 12);
+                enc[k++] = (char)(0x80 | (v >> 6 & 0x3F));
+                enc[k++] = (char)(0x80 | (v & 0x3F));
+            }
+        } else {
+            static const char from[] = "ntrbf", to[] = "\n\t\r\b\f";
+            const char *e = strchr(from, *p);
+            enc[k++] = e ? to[e - from] : *p;       /* \" \\ \/ */
+        }
+        if (out) {
+            if (n + k >= cap) {
+                return NULL;
+            }
+            memcpy(out + n, enc, k);
+            n += k;
+        }
+    }
+    if (p >= end) {
+        return NULL;
+    }
+    if (out) {
+        out[n] = '\0';
+    }
+    return p + 1;
+}
+
+/* Walks the object; with store, keeps the "disp.*" texts. Returns their
+ * count, -1 if malformed. */
+static int parse_texts(const char *json, size_t len, bool store)
+{
+    int n = 0;
+    size_t used = 0;
+    const char *end = json + len;
+    const char *p = skip_ws(json, end);
+    if (p >= end || *p++ != '{') {
+        return -1;
+    }
+    p = skip_ws(p, end);
+    if (p < end && *p == '}') {
+        return 0;
+    }
+    while (true) {
+        char key[64], val[128] = "";
+        p = json_string(skip_ws(p, end), end, key, sizeof(key));
+        p = p ? skip_ws(p, end) : NULL;
+        if (!p || p >= end || *p++ != ':') {
+            return -1;
+        }
+        bool mine = strncmp(key, "disp.", 5) == 0;     /* other values may be long: skipped */
+        p = json_string(skip_ws(p, end), end, mine ? val : NULL, sizeof(val));
+        if (!p) {
+            return -1;
+        }
+        size_t kl = strlen(key) + 1, vl = mine ? strlen(val) + 1 : 0;
+        if (mine && n < TEXTS_MAX && used + kl + vl <= sizeof(s_arena)) {
+            if (store) {
+                s_texts[n].key = memcpy(s_arena + used, key, kl);
+                s_texts[n].val = memcpy(s_arena + used + kl, val, vl);
+            }
+            used += kl + vl;
+            n++;
+        }
+        p = skip_ws(p, end);
+        if (p < end && *p == ',') {
+            p++;
+        } else if (p < end && *p == '}') {
+            return n;
+        } else {
+            return -1;
+        }
+    }
+}
+
+int ui_set_texts(const char *json, size_t len)
+{
+    if (parse_texts(json, len, false) < 0) {
+        return -1;                                  /* keep the current texts */
+    }
+    s_ntexts = 0;
+    int n = parse_texts(json, len, true);
+    s_ntexts = n;
+    return n;
+}
+
+const char *ui_tr(const char *key)
+{
+    for (int i = 0; i < s_ntexts; i++) {
+        if (strcmp(s_texts[i].key, key) == 0) {
+            return s_texts[i].val;
+        }
+    }
+    return key;
+}
+
+void ui_trf(char *out, size_t len, const char *key, ...)
+{
+    const char *t = ui_tr(key);
+    size_t n = 0;
+    while (*t && n + 1 < len) {
+        const char *close = *t == '{' ? strchr(t, '}') : NULL;
+        const char *value = NULL;
+        if (close) {
+            va_list ap;
+            va_start(ap, key);
+            for (const char *name; (name = va_arg(ap, const char *)) != NULL;) {
+                const char *v = va_arg(ap, const char *);
+                if (strlen(name) == (size_t)(close - t - 1) && strncmp(name, t + 1, close - t - 1) == 0) {
+                    value = v;
+                    break;
+                }
+            }
+            va_end(ap);
+        }
+        if (value) {
+            while (*value && n + 1 < len) {
+                out[n++] = *value++;
+            }
+            t = close + 1;
+        } else {
+            out[n++] = *t++;
+        }
+    }
+    out[n] = '\0';
+    ui_utf8_trim(out);                              /* do not end mid-character */
+}
+
 /* ---------- formatting ---------- */
 
 static void fmt_ip(char *buf, size_t len, uint32_t ip)
@@ -151,21 +342,34 @@ static void fmt_ip(char *buf, size_t len, uint32_t ip)
 
 static void fmt_bytes(char *buf, size_t len, uint32_t v)
 {
+    char n[16];
     if (v < 1024) {
-        snprintf(buf, len, "%lu Б", (unsigned long)v);
+        snprintf(n, sizeof(n), "%lu", (unsigned long)v);
+        ui_trf(buf, len, "disp.bytes", "n", n, NULL);
     } else if (v < 1024u * 1024) {
-        snprintf(buf, len, "%lu.%lu КБ", (unsigned long)(v / 1024), (unsigned long)(v % 1024 * 10 / 1024));
+        snprintf(n, sizeof(n), "%lu.%lu", (unsigned long)(v / 1024), (unsigned long)(v % 1024 * 10 / 1024));
+        ui_trf(buf, len, "disp.kb", "n", n, NULL);
     } else {
         uint32_t m = v / (1024u * 1024);
-        snprintf(buf, len, "%lu.%lu МБ", (unsigned long)m, (unsigned long)(v % (1024u * 1024) / 104858 % 10));
+        snprintf(n, sizeof(n), "%lu.%lu", (unsigned long)m, (unsigned long)(v % (1024u * 1024) / 104858 % 10));
+        ui_trf(buf, len, "disp.mb", "n", n, NULL);
     }
+}
+
+/* A number as text, for ui_trf(). */
+static const char *num(char buf[12], long v)
+{
+    snprintf(buf, 12, "%ld", v);
+    return buf;
 }
 
 static void fmt_uptime(char *buf, size_t len, uint32_t s)
 {
     uint32_t d = s / 86400, h = s / 3600 % 24, m = s / 60 % 60;
     if (d) {
-        snprintf(buf, len, "%lu д %02lu:%02lu", (unsigned long)d, (unsigned long)h, (unsigned long)m);
+        char dn[12], hm[8];
+        snprintf(hm, sizeof(hm), "%02lu:%02lu", (unsigned long)h, (unsigned long)m);
+        ui_trf(buf, len, "disp.days", "d", num(dn, (long)d), "hm", hm, NULL);
     } else {
         snprintf(buf, len, "%02lu:%02lu:%02lu", (unsigned long)h, (unsigned long)m, (unsigned long)(s % 60));
     }
@@ -207,79 +411,81 @@ typedef char lines_t[LINES][LINE_LEN];
 
 static void network_lines(const ui_info_t *in, lines_t l)
 {
-    char ip[16];
+    char ip[16], n[12];
     if (in->mode == UI_CLIENT) {
-        snprintf(l[0], LINE_LEN, in->setup_boot ? "Режим: налаштування" : "Режим: клієнт");
+        snprintf(l[0], LINE_LEN, "%s", ui_tr(in->setup_boot ? "disp.modeSetup" : "disp.modeClient"));
         if (in->wifi_state == 2) {
             snprintf(l[1], LINE_LEN, "Wi-Fi: %s", in->wifi_ssid);
-            snprintf(l[2], LINE_LEN, "Сигнал: %d дБм", in->rssi);
+            ui_trf(l[2], LINE_LEN, "disp.signal", "n", num(n, in->rssi), NULL);
         } else if (in->wifi_state == 1) {
-            snprintf(l[1], LINE_LEN, "Wi-Fi: підключення…");
+            snprintf(l[1], LINE_LEN, "%s", ui_tr("disp.wifiConnecting"));
             snprintf(l[2], LINE_LEN, "%s", in->wifi_ssid);
         } else {
-            snprintf(l[1], LINE_LEN, "Wi-Fi: не налаштовано");
+            snprintf(l[1], LINE_LEN, "%s", ui_tr("disp.wifiNone"));
         }
         if (in->mgmt_ip && !in->setup_boot) {
             fmt_ip(ip, sizeof(ip), in->mgmt_ip);
-            snprintf(l[3], LINE_LEN, "Сторінка WT32:");
+            snprintf(l[3], LINE_LEN, "%s", ui_tr("disp.page"));
             snprintf(l[4], LINE_LEN, "%s:%u", ip, in->mgmt_port);
         } else if (in->setup_ap) {
             snprintf(l[3], LINE_LEN, "%s", in->setup_ssid);
             snprintf(l[4], LINE_LEN, "http://192.168.4.1");
         } else {
-            snprintf(l[3], LINE_LEN, "Сторінка — коли");
-            snprintf(l[4], LINE_LEN, "пристрій отримає IP");
+            snprintf(l[3], LINE_LEN, "%s", ui_tr("disp.pageWhen1"));
+            snprintf(l[4], LINE_LEN, "%s", ui_tr("disp.pageWhen2"));
         }
         return;
     }
-    snprintf(l[0], LINE_LEN, in->mode == UI_ROUTER ? "Режим: роутер" : "Режим: точка доступу");
+    snprintf(l[0], LINE_LEN, "%s", ui_tr(in->mode == UI_ROUTER ? "disp.modeRouter" : "disp.modeAp"));
     snprintf(l[1], LINE_LEN, "Wi-Fi: %s", in->ap_ssid);
-    snprintf(l[2], LINE_LEN, "Клієнтів Wi-Fi: %d", in->ap_clients);
-    snprintf(l[3], LINE_LEN, in->uplink == UI_UPLINK_FALLBACK ? "Сторінка (запасна):" : "Сторінка WT32:");
+    ui_trf(l[2], LINE_LEN, "disp.apClients", "n", num(n, in->ap_clients), NULL);
+    snprintf(l[3], LINE_LEN, "%s", ui_tr(in->uplink == UI_UPLINK_FALLBACK ? "disp.pageFallback" : "disp.page"));
     if (in->wt32_ip) {
         fmt_ip(ip, sizeof(ip), in->wt32_ip);
         snprintf(l[4], LINE_LEN, "http://%s", ip);
     } else {
-        snprintf(l[4], LINE_LEN, "чекаю DHCP…");
+        snprintf(l[4], LINE_LEN, "%s", ui_tr("disp.waitDhcp"));
     }
 }
 
 void ui_eth_line(char *buf, size_t len, const ui_info_t *in)
 {
+    char n[12];
     if (!in->eth_up) {
-        snprintf(buf, len, "Ethernet: немає лінку");
+        snprintf(buf, len, "%s", ui_tr("disp.ethNone"));
     } else if (in->eth_speed) {
-        snprintf(buf, len, "Ethernet: %dМ %s", in->eth_speed, in->eth_full ? "повний" : "напів");
+        ui_trf(buf, len, in->eth_full ? "disp.ethFull" : "disp.ethHalf", "speed", num(n, in->eth_speed), NULL);
     } else {
-        snprintf(buf, len, "Ethernet: є лінк");
+        snprintf(buf, len, "%s", ui_tr("disp.ethUp"));
     }
 }
 
 static void device_lines(const ui_info_t *in, lines_t l)
 {
     ui_eth_line(l[0], LINE_LEN, in);
-    snprintf(l[1], LINE_LEN, "MAC пристрою:");
+    snprintf(l[1], LINE_LEN, "%s", ui_tr("disp.devMac"));
     if (in->dev_known) {
         const uint8_t *m = in->dev_mac;
         snprintf(l[2], LINE_LEN, "%02X:%02X:%02X:%02X:%02X:%02X", m[0], m[1], m[2], m[3], m[4], m[5]);
     } else {
-        snprintf(l[2], LINE_LEN, "ще не бачили");
+        snprintf(l[2], LINE_LEN, "%s", ui_tr("disp.notSeen"));
     }
-    snprintf(l[3], LINE_LEN, "IP пристрою:");
+    snprintf(l[3], LINE_LEN, "%s", ui_tr("disp.devIp"));
     if (in->dev_ip) {
         fmt_ip(l[4], LINE_LEN, in->dev_ip);
     } else {
-        snprintf(l[4], LINE_LEN, in->dev_known ? (in->mode == UI_ROUTER ? "чекаю DHCP…" : "ще невідома") : "—");
+        snprintf(l[4], LINE_LEN, "%s", in->dev_known ? ui_tr(in->mode == UI_ROUTER ? "disp.waitDhcp" : "disp.ipUnknown") : "—");
     }
 }
 
 static void cable_lines(const ui_info_t *in, lines_t l)
 {
-    static const char *const UPLINK[] = { "—", "чекаю…", "працює", "немає (запасна IP)" };
+    static const char *const UPLINK[] = { NULL, "disp.uplinkWaiting", "disp.uplinkDhcp", "disp.uplinkFallback" };
+    const char *up = UPLINK[in->uplink <= UI_UPLINK_FALLBACK ? in->uplink : 0];
     ui_eth_line(l[0], LINE_LEN, in);
-    snprintf(l[1], LINE_LEN, "DHCP роутера:");
-    snprintf(l[2], LINE_LEN, "%s", UPLINK[in->uplink <= UI_UPLINK_FALLBACK ? in->uplink : 0]);
-    snprintf(l[3], LINE_LEN, "Шлюз:");
+    snprintf(l[1], LINE_LEN, "%s", ui_tr("disp.routerDhcp"));
+    snprintf(l[2], LINE_LEN, "%s", up ? ui_tr(up) : "—");
+    snprintf(l[3], LINE_LEN, "%s", ui_tr("disp.gateway"));
     if (in->gw) {
         fmt_ip(l[4], LINE_LEN, in->gw);
     } else {
@@ -289,14 +495,17 @@ static void cable_lines(const ui_info_t *in, lines_t l)
 
 static void traffic_lines(const ui_info_t *in, lines_t l)
 {
-    char v[16];
+    char v[24], n[12];
     fmt_bytes(v, sizeof(v), in->to_wifi_bytes);
-    snprintf(l[0], LINE_LEN, "До Wi-Fi: %s", v);
+    ui_trf(l[0], LINE_LEN, "disp.toWifi", "v", v, NULL);
     fmt_bytes(v, sizeof(v), in->to_eth_bytes);
-    snprintf(l[1], LINE_LEN, "До Ethernet: %s", v);
-    snprintf(l[2], LINE_LEN, "Відкинуто: %lu", (unsigned long)in->dropped);
-    snprintf(l[3], LINE_LEN, "Помилки: %lu", (unsigned long)in->tx_errors);
-    snprintf(l[4], LINE_LEN, "Чужі кадри: %lu", (unsigned long)in->foreign);
+    ui_trf(l[1], LINE_LEN, "disp.toEth", "v", v, NULL);
+    snprintf(n, sizeof(n), "%lu", (unsigned long)in->dropped);
+    ui_trf(l[2], LINE_LEN, "disp.dropped", "n", n, NULL);
+    snprintf(n, sizeof(n), "%lu", (unsigned long)in->tx_errors);
+    ui_trf(l[3], LINE_LEN, "disp.errors", "n", n, NULL);
+    snprintf(n, sizeof(n), "%lu", (unsigned long)in->foreign);
+    ui_trf(l[4], LINE_LEN, "disp.foreign", "n", n, NULL);
 }
 
 static void script_lines(const ui_info_t *in, lines_t l)
@@ -313,13 +522,14 @@ static void script_lines(const ui_info_t *in, lines_t l)
 
 static void system_lines(const ui_info_t *in, lines_t l)
 {
-    char up[24];
+    char up[32], n[12];
     fmt_uptime(up, sizeof(up), in->uptime_s);
-    snprintf(l[0], LINE_LEN, "Версія %s", in->version);
-    snprintf(l[1], LINE_LEN, "Памʼять: %lu КБ", (unsigned long)(in->heap / 1024));
-    snprintf(l[2], LINE_LEN, "Працює: %s", up);
-    snprintf(l[3], LINE_LEN, "Кнопка 5 с: налашт.");
-    snprintf(l[4], LINE_LEN, "Кнопка 10 с: скидання");
+    ui_trf(l[0], LINE_LEN, "disp.version", "v", in->version, NULL);
+    snprintf(n, sizeof(n), "%lu", (unsigned long)(in->heap / 1024));
+    ui_trf(l[1], LINE_LEN, "disp.memory", "n", n, NULL);
+    ui_trf(l[2], LINE_LEN, "disp.uptime", "t", up, NULL);
+    snprintf(l[3], LINE_LEN, "%s", ui_tr("disp.btn5"));
+    snprintf(l[4], LINE_LEN, "%s", ui_tr("disp.btn10"));
 }
 
 static void title(uint8_t *fb, const char *text, int index, int count)
@@ -343,7 +553,8 @@ static void body(uint8_t *fb, lines_t l)
 
 void ui_render_page(uint8_t *fb, const ui_info_t *in, int index)
 {
-    static const char *const TITLES[] = { "Мережа", "Пристрій", "Кабель", "Трафік", "Скрипт", "Система" };
+    static const char *const TITLES[] = { "disp.tNetwork", "disp.tDevice", "disp.tCable", "disp.tTraffic",
+                                          "disp.tScript", "disp.tSystem" };
     page_t p[6];
     int n = pages(in, p);
     index = ((index % n) + n) % n;
@@ -358,7 +569,7 @@ void ui_render_page(uint8_t *fb, const ui_info_t *in, int index)
     case P_SYSTEM:  system_lines(in, l); break;
     }
     memset(fb, 0, UI_FB_SIZE);
-    title(fb, in->setup_boot && p[index] == P_NETWORK ? "Налаштування" : TITLES[p[index]], index, n);
+    title(fb, ui_tr(in->setup_boot && p[index] == P_NETWORK ? "disp.tSetup" : TITLES[p[index]]), index, n);
     body(fb, l);
 }
 
@@ -389,15 +600,16 @@ static void bar(uint8_t *fb, uint32_t done, uint32_t total)
 
 void ui_render_hold(uint8_t *fb, uint32_t held_ms)
 {
+    const char *t = ui_tr("disp.tButton");
     if (held_ms < BTN_SETUP_MS) {
-        ui_render_notice(fb, "Кнопка", "Тримайте до 5 с:", "точка налаштування", "Відпустіть: скасувати");
+        ui_render_notice(fb, t, ui_tr("disp.hold"), ui_tr("disp.setupAp"), ui_tr("disp.cancel"));
         bar(fb, held_ms, BTN_SETUP_MS);
     } else if (held_ms < BTN_RESET_MS) {
-        ui_render_notice(fb, "Кнопка", "Відпустіть зараз:", "точка налаштування", "До 10 с: скидання");
+        ui_render_notice(fb, t, ui_tr("disp.releaseNow"), ui_tr("disp.setupAp"), ui_tr("disp.until10"));
         bar(fb, held_ms - BTN_SETUP_MS, BTN_RESET_MS - BTN_SETUP_MS);
     } else {
-        ui_render_notice(fb, "Кнопка", "Відпустіть зараз:", "СКИДАННЯ налаштувань", "Wi-Fi, режим, пароль");
+        ui_render_notice(fb, t, ui_tr("disp.releaseNow"), ui_tr("disp.resetAll"), ui_tr("disp.resetWhat"));
         ui_fill(fb, 0, TITLE_H + 1 + 2 * LINE_H, UI_W, LINE_H, false);
-        ui_text(fb, 1, TITLE_H + 1 + 2 * LINE_H, "СКИДАННЯ налаштувань", UI_COLS, true);
+        ui_text(fb, 1, TITLE_H + 1 + 2 * LINE_H, ui_tr("disp.resetAll"), UI_COLS, true);
     }
 }

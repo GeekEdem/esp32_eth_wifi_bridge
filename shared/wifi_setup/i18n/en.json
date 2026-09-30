@@ -1,6 +1,6 @@
 {
-  "_name": "English",
   "_label": "EN",
+  "_name": "English",
   "auth.change": "Change password",
   "auth.changed": "Password changed",
   "auth.current": "Current password",
@@ -45,6 +45,7 @@
   "err.thisFirmwareHasNoUpdate": "This firmware has no update partitions: flash it over a cable",
   "err.thisIsNotAnUpdate": "This is not an update file. Use the \"…-ota.bin\" image (the full image for address 0x0 is for flashing over a cable only).",
   "err.tooManyAttemptsWait30": "Too many attempts. Wait 30 seconds.",
+  "err.unknownLanguage": "Unknown language",
   "err.wrongPassword": "Wrong password",
   "fw.built": "Built",
   "fw.commit": "Source commit",

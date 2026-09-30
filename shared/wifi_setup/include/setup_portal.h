@@ -3,7 +3,9 @@
  * Core routes (every API route except login needs a session, see portal_auth.h):
  *   GET  /               application page (should load /auth.js)
  *   GET  /auth.js        language switch, login form and password section
- *   GET  /i18n.json?l=xx texts of language xx (see portal_lang_t) and the list of languages
+ *   GET  /i18n.json?l=xx texts of language xx (see portal_lang_t) and the list of languages;
+ *                        without l: the device's language (saved, else ?b=<browser's>, else the first)
+ *   POST /api/lang       lang: the device's language, kept in NVS (e.g. for a display)
  *   POST /api/login      password -> session cookie
  *   POST /api/logout
  *   POST /api/password   old, new
@@ -60,9 +62,15 @@ typedef struct {
     bool ota;                       /* firmware update route + rollback confirmation */
     const portal_lang_t *langs;     /* page languages; the first one is the default */
     size_t lang_count;
+    /* The device's language was changed on the page (HTTP server task). */
+    void (*on_lang)(const portal_lang_t *lang);
 } setup_portal_config_t;
 
 esp_err_t setup_portal_start(const setup_portal_config_t *cfg);
+
+/* The device's language: the one saved from the page (POST /api/lang), else
+ * the first of portal_langs. Reads NVS; usable before setup_portal_start(). */
+const portal_lang_t *setup_portal_lang(void);
 
 /* Register an application route on every running server; it requires a
  * logged-in session. */

@@ -17,6 +17,12 @@ typedef struct {
     void (*fill)(ui_info_t *in);    /* current data for the pages */
     void (*on_setup)(void);         /* hold 5 s */
     void (*on_reset)(void);         /* hold 10 s */
+    const char *texts;              /* language: its JSON texts (see ui_set_texts()) */
+    size_t texts_len;
 } display_config_t;
 
 esp_err_t display_start(const display_config_t *cfg);
+
+/* Another language (the JSON must stay valid, e.g. the built-in bundle);
+ * taken by the display task before it draws next. */
+void display_set_texts(const char *json, size_t len);

@@ -33,6 +33,7 @@
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "eth.h"
+#include "setup_portal.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lwip/ip4_addr.h"
@@ -252,7 +253,10 @@ void app_main(void)
     ESP_ERROR_CHECK(script_start(&script));
     ESP_ERROR_CHECK(script_web_start());
 
+    const portal_lang_t *lang = setup_portal_lang();       /* the language chosen on the page */
     const display_config_t disp = {
+        .texts = lang ? lang->json : NULL,
+        .texts_len = lang ? lang->json_len : 0,
         .sda_gpio = CONFIG_WT32_I2C_SDA_GPIO,
         .scl_gpio = CONFIG_WT32_I2C_SCL_GPIO,
         .button_gpio = CONFIG_WT32_BUTTON_GPIO,

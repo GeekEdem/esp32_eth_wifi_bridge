@@ -63,7 +63,7 @@ Caveat: the ESP cannot reach the device at the device's own IP (to the ESP it is
 - Limits: 40 KB memory (budget allocator), 2 s per run (the VM heartbeat hook raises `timeout_error`), any error stops the script, a crash during a script turns autostart off.
 - API: `print`, `output`, `every/after/cancel`, `status()`, `millis`, `heap`.
 - Measurements (ESP-IDF 6.1 build, -Og): +~102 KB flash, +6.5 KB static RAM; at run time, 10 KB stack + the budget.
-- `output()` values are also shown on the display (the "Script" page («Скрипт»)). Next: script access to the device over TCP — once the "shared IP" issue is solved (see the caveat above).
+- `output()` values are also shown on the display (the "Script" page). Next: script access to the device over TCP — once the "shared IP" issue is solved (see the caveat above).
 
 ## Flash budget
 
@@ -80,7 +80,7 @@ Through the page: a `…-ota.bin` file, chip/project check before writing, write
 - Texts are flat JSON files `i18n/<code>.json` next to each part that has page texts (`wt32/main`, `tools/c3-programmer/main`, `shared/wifi_setup`, `shared/script_berry`); `en` is the reference, `_name` / `_label` name the language. `portal_i18n()` (`shared/wifi_setup/project_include.cmake`) runs `tools/i18n_bundle.py` at build time: the folders of an app are merged, missing texts are filled from English, placeholders are checked, and the result is compiled in as `portal_langs[]`.
 - The device serves `GET /i18n.json?l=<code>` (public: the login form needs it). `auth.js` holds the language: `data-i18n*` attributes in the HTML (the HTML itself is English, shown until the texts load), `I18N.t()` for texts built in JS, a switch in the header and on the login form, the choice in `localStorage`, the browser's language as the default.
 - The device never sends display text: errors are `{"ok":false,"key":"err.…","message":"English"}` and the page shows the key's text in its language. So a new language needs no firmware code, only JSON files.
-- The display stays Ukrainian for now (its own 6×10 font and 21-character lines).
+- The display uses the same files (keys `disp.*`, one 21-character line each, checked by the bundler; the 6×10 font has Latin and Cyrillic only): `disp_ui.c` reads the texts out of the language's bundled JSON. The language is the device's: saved in NVS (`wifi_setup`/`lang`) by `POST /api/lang` when it is switched on the page, and the default of a browser without its own choice.
 
 ## Tools
 

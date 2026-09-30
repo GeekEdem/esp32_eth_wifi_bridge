@@ -4,6 +4,11 @@
  * column, bit 0 = top row. Text is UTF-8 in the 6x10 font (21 characters per
  * line); anything longer is cut with "…". A page is a title bar plus five
  * lines. Which pages exist depends on the mode (see ui_page_count()).
+ *
+ * Texts come from the page language files (keys "disp.*" in main/i18n/<code>.json,
+ * with {placeholders}); ui_set_texts() takes one language's JSON object as
+ * the firmware bundles it. Until then a text shows as its key. The font has
+ * Latin and Cyrillic; other scripts show as "?".
  */
 #pragma once
 
@@ -74,7 +79,16 @@ void ui_render_hold(uint8_t *fb, uint32_t held_ms);
 /* A full-screen message: title bar and up to three lines (NULL = empty). */
 void ui_render_notice(uint8_t *fb, const char *title, const char *l1, const char *l2, const char *l3);
 
-/* The Ethernet line of the device / cable page, e.g. "Ethernet: 100М повний". */
+/* Language: the "disp.*" texts of a flat JSON object {"key":"text",...}.
+ * Returns how many were taken, -1 if the JSON is malformed (texts unchanged). */
+int ui_set_texts(const char *json, size_t len);
+/* The text for a key (the key itself if there is none). */
+const char *ui_tr(const char *key);
+/* The text with {name} placeholders filled: pairs of name, value (strings),
+ * ended by NULL. */
+void ui_trf(char *out, size_t len, const char *key, ...);
+
+/* The Ethernet line of the device / cable page, e.g. "Ethernet: 100M full". */
 void ui_eth_line(char *buf, size_t len, const ui_info_t *in);
 
 /* Primitives (exported for the tests). */

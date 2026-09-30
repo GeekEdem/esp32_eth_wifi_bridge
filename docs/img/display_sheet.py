@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Display pages for the READMEs: the .pbm screens written by
-wt32/test/disp_ui_test (run with a directory argument) -> docs/img/display.png.
-Usage: display_sheet.py PBM_DIR   (needs Pillow)"""
+wt32/test/disp_ui_test (run with a directory argument; one set per language)
+-> docs/img/display_<lang>.png.
+Usage: display_sheet.py PBM_DIR [LANG...]   (default: en uk; needs Pillow)"""
 import glob
 import os
 import sys
@@ -12,7 +13,7 @@ SCALE, PAD, BEZEL = 3, 24, 10
 
 
 def load(d, name):
-    path = glob.glob(os.path.join(d, '*_%s.pbm' % name))[0]
+    path = glob.glob(os.path.join(d, '[0-9][0-9]_%s.pbm' % name))[0]
     img = Image.open(path).convert('L')             # P4: 1 = black ink -> lit pixel on the OLED
     lit = img.point(lambda v: 255 if v == 0 else 0)
     oled = Image.new('RGB', img.size, (8, 10, 14))
@@ -20,8 +21,8 @@ def load(d, name):
     return oled.resize((img.width * SCALE, img.height * SCALE), Image.NEAREST)
 
 
-def main(d):
-    screens = [load(d, n) for n in PICK]
+def sheet_for(d, lang):
+    screens = [load(d, '%s_%s' % (lang, n)) for n in PICK]
     w, h = screens[0].size
     cols = 4
     rows = (len(screens) + cols - 1) // cols
@@ -33,10 +34,11 @@ def main(d):
         y = PAD + (i // cols) * (ch + PAD)
         draw.rounded_rectangle((x, y, x + cw - 1, y + ch - 1), radius=8, fill=(30, 32, 38))
         sheet.paste(s, (x + BEZEL, y + BEZEL))
-    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'display.png')
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'display_%s.png' % lang)
     sheet.save(out, optimize=True)
     print(out)
 
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    for lang in sys.argv[2:] or ['en', 'uk']:
+        sheet_for(sys.argv[1], lang)

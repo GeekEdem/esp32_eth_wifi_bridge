@@ -29,7 +29,7 @@ Firmware for the **WT32-ETH01** (ESP32 + LAN8720) that gives Wi-Fi to a device w
 - **Web page** in **English and Ukrainian** (switch in the header and on the login form). Adding a language takes JSON files only (see [Languages](#languages)). The page shows per-mode status, traffic counters, DHCP clients and pins, and the settings. It is password-protected (default `12345678`), with sessions and a lockout after failed attempts.
 - **Firmware info and update** on the page: version, build date and time, source commit, SHA-256 of the image, ESP-IDF version. An update is checked before any flash write, and the device rolls back if the new firmware does not come up within 60 s.
 - **Scripts in [Berry](https://github.com/berry-lang/berry)**, edited on the page: read the device status, show results on the page and the display, and run on timers. Scripts have memory and time limits, and a crashing script turns its autostart off.
-- **Display and button** (optional): 0.96″ SSD1306 OLED with pages per mode. The button has three actions: a short press shows the next page, a 5 s press starts setup once, and a 10 s press resets.
+- **Display and button** (optional): 0.96″ SSD1306 OLED with pages per mode, in the language chosen on the page. The button has three actions: a short press shows the next page, a 5 s press starts setup once, and a 10 s press resets.
 - **C3 programmer**: an ESP32-C3 SuperMini flashes the WT32 and reads its log over Wi-Fi (`esptool -p rfc2217://c3prog.local:4000`) or over USB. It has its own page, in the same two languages.
 - **3D-printable case** for the WT32, the display, the button and USB-C power, generated in code and checked against the board's 3D model.
 
@@ -43,9 +43,9 @@ The pages at phone width (taken against the test mock; [`docs/img/screenshots.js
 
 In Ukrainian: [login](docs/img/login_uk.png), [client](docs/img/client_uk.png), [router](docs/img/router_uk.png), [mode](docs/img/mode_uk.png), [script](docs/img/script_uk.png), [firmware](docs/img/firmware_uk.png), [C3](docs/img/c3_uk.png).
 
-The display (rendered by the host test; the display texts are in Ukrainian): the Client pages (network, device, traffic, system), then Router, Access point, and the button held past 5 s:
+The display (rendered by the host test; it follows the language chosen on the page, [Ukrainian](docs/img/display_uk.png)): the Client pages (network, device, traffic, system), then Router, Access point, and the button held past 5 s:
 
-![display pages](docs/img/display.png)
+![display pages](docs/img/display_en.png)
 
 | Case | Wiring |
 |---|---|

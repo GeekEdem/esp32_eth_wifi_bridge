@@ -7,8 +7,11 @@
  * placeholder / title from it (the HTML keeps the English text, shown until the
  * texts are loaded); I18N.onChange(fn) lets a page redraw what it builds
  * itself; I18N.ready resolves once the first texts are in. The choice (switch
- * in the page header and on the login form) is kept in localStorage. Default:
- * the browser's language if the device has it, otherwise the first language.
+ * in the page header and on the login form) is kept in localStorage and on the
+ * device (POST /api/lang: its display uses it; a switch before login is sent
+ * after it, and the first login sets it if the device has none yet). Without a
+ * choice in this browser: the device's language, else the browser's if the
+ * device has it, else the first language.
  * Errors from the device carry a key ({"key":"err.…","message":"English"}):
  * I18N.msg(j) gives the text in the current language.
  *
@@ -19,9 +22,10 @@
   let dict = {};
   let langs = [];
   let lang = (() => {
-    try { const s = localStorage.getItem('lang'); if (s) return s; } catch (e) {}
-    return (navigator.language || 'en').slice(0, 2).toLowerCase();
+    try { return localStorage.getItem('lang') || ''; } catch (e) { return ''; }
   })();
+  let deviceSaved = true;        /* the device has a language saved */
+  let pendingLang = null;        /* chosen before login: send to the device after it */
   const listeners = [];
 
   function t(key, p) {
@@ -69,12 +73,23 @@
     if (title && has(title.dataset.i18n)) document.title = t(title.dataset.i18n);
     document.querySelectorAll('.langsw').forEach(fillSwitch);
   }
+  /* code '': the device decides (see the top), told the browser's language */
   async function load(code) {
-    const r = await window.fetch('/i18n.json?l=' + encodeURIComponent(code), { cache: 'no-store' });
+    const q = code ? 'l=' + encodeURIComponent(code)
+      : 'b=' + encodeURIComponent((navigator.language || 'en').slice(0, 2).toLowerCase());
+    const r = await window.fetch('/i18n.json?' + q, { cache: 'no-store' });
     const j = await r.json();
     dict = j.strings || {};
     langs = j.langs || [];
     lang = j.lang || code;
+    deviceSaved = j.saved !== false;
+  }
+  /* Save the language on the device; before login (401) it waits for the login. */
+  function saveDevice(code) {
+    pendingLang = code;
+    F('/api/lang', { method: 'POST', body: new URLSearchParams({ lang: code }) })
+      .then(r => { if (r.status !== 401) { pendingLang = null; deviceSaved = true; } })
+      .catch(() => {});
   }
   async function set(code) {
     if (code === lang) return;
@@ -82,6 +97,7 @@
     try { localStorage.setItem('lang', lang); } catch (e) {}
     apply();
     listeners.forEach(f => { try { f(lang); } catch (e) { console.error(e); } });
+    saveDevice(lang);
   }
   function switcher() {
     const box = document.createElement('div');
@@ -150,6 +166,7 @@
         if (!j.ok) { msg.textContent = I18N.msg(j); pw.select(); return; }
         ov.remove();
         pending = null;
+        if (pendingLang || !deviceSaved) saveDevice(pendingLang || lang);
         markDefault(j.defaultPassword);
         resolve();
       };

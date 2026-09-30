@@ -16,6 +16,7 @@
 
 #include "client_mode.h"
 #include "eth.h"
+#include "display.h"
 #include "dhcp_server.h"
 #include "esp_mac.h"
 #include "lwip/ip4_addr.h"
@@ -238,6 +239,12 @@ static esp_err_t relearn_post(httpd_req_t *req)
     return setup_portal_send_json(req, "{\"ok\":true}");
 }
 
+/* The language was changed on the page: the display follows. */
+static void on_lang(const portal_lang_t *lang)
+{
+    display_set_texts(lang->json, lang->json_len);
+}
+
 esp_err_t web_start(const wt32_settings_t *s, bool setup_boot)
 {
     s_set = *s;
@@ -249,6 +256,7 @@ esp_err_t web_start(const wt32_settings_t *s, bool setup_boot)
         .ota = true,
         .langs = portal_langs,
         .lang_count = portal_lang_count,
+        .on_lang = on_lang,
         .lan_port = s->mode == WT32_MODE_CLIENT ? CONFIG_WT32_MGMT_PORT : 0,
     };
     esp_err_t err = setup_portal_start(&cfg);

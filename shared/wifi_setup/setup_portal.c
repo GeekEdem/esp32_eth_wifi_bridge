@@ -14,6 +14,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lwip/sockets.h"
+#include "nvs.h"
 #include "portal_auth.h"
 #include "portal_ota.h"
 #include "wifi_setup.h"
@@ -174,24 +175,100 @@ static esp_err_t ota_js_get(httpd_req_t *req)
     return httpd_resp_send(req, ota_js_start, ota_js_end - ota_js_start - 1);
 }
 
-/* {"lang":"uk","langs":[{"code","name","label"},...],"strings":{...}} for ?l=<code>
- * (unknown or missing: the first language). Public: the login form needs it. */
+/* ---------- the device's language ---------- */
+
+#define LANG_NS     "wifi_setup"
+#define LANG_KEY    "lang"
+
+static const portal_lang_t *lang_find(const char *code)
+{
+    for (size_t i = 0; code && i < portal_lang_count; i++) {
+        if (strcmp(portal_langs[i].code, code) == 0) {
+            return &portal_langs[i];
+        }
+    }
+    return NULL;
+}
+
+/* The saved language, NULL if none (or no longer built in). */
+static const portal_lang_t *lang_saved(void)
+{
+    char code[12] = "";
+    size_t len = sizeof(code);
+    nvs_handle_t h;
+    if (nvs_open(LANG_NS, NVS_READONLY, &h) == ESP_OK) {
+        if (nvs_get_str(h, LANG_KEY, code, &len) != ESP_OK) {
+            code[0] = '\0';
+        }
+        nvs_close(h);
+    }
+    return lang_find(code);
+}
+
+const portal_lang_t *setup_portal_lang(void)
+{
+    const portal_lang_t *l = lang_saved();
+    return l ? l : (portal_lang_count ? &portal_langs[0] : NULL);
+}
+
+static esp_err_t lang_post(httpd_req_t *req)
+{
+    char form[48], code[12];
+    if (setup_portal_read_form(req, form, sizeof(form)) != ESP_OK ||
+        setup_portal_form_value(form, "lang", code, sizeof(code)) != ESP_OK) {
+        return setup_portal_send_error_key(req, "err.malformedRequest", "Malformed request");
+    }
+    const portal_lang_t *lang = lang_find(code);
+    if (!lang) {
+        return setup_portal_send_error_key(req, "err.unknownLanguage", "Unknown language");
+    }
+    if (lang != lang_saved()) {
+        nvs_handle_t h;
+        esp_err_t err = nvs_open(LANG_NS, NVS_READWRITE, &h);
+        if (err == ESP_OK) {
+            err = nvs_set_str(h, LANG_KEY, lang->code);
+            if (err == ESP_OK) {
+                err = nvs_commit(h);
+            }
+            nvs_close(h);
+        }
+        if (err != ESP_OK) {
+            return setup_portal_send_error_key(req, "err.couldNotSave", "Could not save");
+        }
+        ESP_LOGI(TAG, "language: %s", lang->code);
+        if (s_cfg.on_lang) {
+            s_cfg.on_lang(lang);
+        }
+    }
+    return setup_portal_send_json(req, "{\"ok\":true}");
+}
+
+/* {"lang":"uk","device":"uk","saved":true,"langs":[{"code","name","label"},...],"strings":{...}}
+ * for ?l=<code>; without it (or unknown) the device's language: the saved one,
+ * else ?b=<code> (the browser's), else the first. Public: the login form needs it. */
 static esp_err_t i18n_get(httpd_req_t *req)
 {
-    const portal_lang_t *lang = s_cfg.lang_count ? &s_cfg.langs[0] : NULL;
-    char q[32], code[12];
-    if (httpd_req_get_url_query_str(req, q, sizeof(q)) == ESP_OK &&
-        httpd_query_key_value(q, "l", code, sizeof(code)) == ESP_OK) {
-        for (size_t i = 0; i < s_cfg.lang_count; i++) {
-            if (strcmp(s_cfg.langs[i].code, code) == 0) {
-                lang = &s_cfg.langs[i];
-            }
+    const portal_lang_t *saved = lang_saved();
+    const portal_lang_t *device = saved ? saved : (portal_lang_count ? &portal_langs[0] : NULL);
+    const portal_lang_t *lang = NULL;
+    char q[48], code[12];
+    if (httpd_req_get_url_query_str(req, q, sizeof(q)) == ESP_OK) {
+        if (httpd_query_key_value(q, "l", code, sizeof(code)) == ESP_OK) {
+            lang = lang_find(code);
         }
+        if (!lang && !saved && httpd_query_key_value(q, "b", code, sizeof(code)) == ESP_OK) {
+            lang = lang_find(code);
+        }
+    }
+    if (!lang) {
+        lang = device;
     }
     char head[1024];
     size_t pos = setup_portal_appendf(head, 0, sizeof(head), "{\"lang\":");
     pos = setup_portal_json_str(head, pos, sizeof(head), lang ? lang->code : "");
-    pos = setup_portal_appendf(head, pos, sizeof(head), ",\"langs\":[");
+    pos = setup_portal_appendf(head, pos, sizeof(head), ",\"device\":");
+    pos = setup_portal_json_str(head, pos, sizeof(head), device ? device->code : "");
+    pos = setup_portal_appendf(head, pos, sizeof(head), ",\"saved\":%s,\"langs\":[", saved ? "true" : "false");
     for (size_t i = 0; i < s_cfg.lang_count; i++) {
         pos = setup_portal_appendf(head, pos, sizeof(head), "%s{\"code\":", i ? "," : "");
         pos = setup_portal_json_str(head, pos, sizeof(head), s_cfg.langs[i].code);
@@ -483,6 +560,7 @@ esp_err_t setup_portal_start(const setup_portal_config_t *cfg)
         { .uri = "/api/forget",   .method = HTTP_POST, .handler = forget_post },
         { .uri = "/api/logout",   .method = HTTP_POST, .handler = portal_auth_logout_post },
         { .uri = "/api/password", .method = HTTP_POST, .handler = portal_auth_password_post },
+        { .uri = "/api/lang",     .method = HTTP_POST, .handler = lang_post },
     };
     for (size_t i = 0; i < sizeof(open_uris) / sizeof(open_uris[0]) && err == ESP_OK; i++) {
         err = register_raw(&open_uris[i]);

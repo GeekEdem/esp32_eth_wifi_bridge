@@ -17,15 +17,30 @@ class Langs:
             raise SystemExit('\n'.join(errors))
         self.m = i18n_bundle.merged(langs)
         self.en = self.m['en'][2]
+        self.saved = None                   # the device's language (NVS), None = not saved
 
     def response(self, path):
-        """Body of GET /i18n.json?l=<code>: unknown code -> the first language."""
+        """Body of GET /i18n.json: ?l=<code>, else the saved language, else ?b=<code>
+        (the browser's), else the first (as setup_portal.c)."""
         q = urllib.parse.parse_qs(urllib.parse.urlparse(path).query)
+        first = next(iter(self.m))
+        device = self.saved or first
         code = q.get('l', [''])[0]
         if code not in self.m:
-            code = next(iter(self.m))
-        return {"lang": code, "langs": [{"code": c, "name": n, "label": l} for c, (n, l, _) in self.m.items()],
+            code = q.get('b', [''])[0] if not self.saved else ''
+        if code not in self.m:
+            code = device
+        return {"lang": code, "device": device, "saved": self.saved is not None,
+                "langs": [{"code": c, "name": n, "label": l} for c, (n, l, _) in self.m.items()],
                 "strings": self.m[code][2]}
+
+    def post_lang(self, form):
+        """POST /api/lang (after the session check): (status, body)."""
+        code = form.get('lang', '')
+        if code not in self.m:
+            return 400, self.err('err.unknownLanguage')
+        self.saved = code
+        return 200, {"ok": True}
 
     def err(self, key, **extra):
         """{"ok":false,"key":...,"message":English} as setup_portal_send_error_key() sends it."""

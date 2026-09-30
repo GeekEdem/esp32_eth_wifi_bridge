@@ -12,12 +12,13 @@
 static uint8_t fb[UI_FB_SIZE];
 static const char *outdir;
 static int shots;
+static char prefix[8];            /* language of the screens being saved */
 
 static void save(const char *name)
 {
     if (!outdir) return;
     char path[256];
-    snprintf(path, sizeof(path), "%s/%02d_%s.pbm", outdir, shots++, name);
+    snprintf(path, sizeof(path), "%s/%02d_%s%s.pbm", outdir, shots++, prefix, name);
     FILE *f = fopen(path, "w");
     assert(f);
     fprintf(f, "P1\n%d %d\n", UI_W, UI_H);
@@ -58,37 +59,20 @@ static void all_pages(const ui_info_t *in, const char *name)
     }
 }
 
-int main(int argc, char **argv)
+/* Every page of every mode in one language (the main/i18n/<lang>.json the
+ * firmware is built from); eth: the expected Ethernet lines. */
+static void pages_in(const char *lang, const char *const eth[4])
 {
-    outdir = argc > 1 ? argv[1] : NULL;
-
-    /* font table is sorted (binary search) */
-    for (size_t i = 1; i < font6x10_count; i++) assert(font6x10[i - 1].cp < font6x10[i].cp);
-
-    /* UTF-8 */
-    uint32_t cp;
-    assert(ui_utf8_next("A", &cp) == 1 && cp == 'A');
-    assert(ui_utf8_next("Ї", &cp) == 2 && cp == 0x407);
-    assert(ui_utf8_next("…", &cp) == 3 && cp == 0x2026);
-    assert(ui_utf8_next("\xF0\x9F\x98\x80", &cp) == 4 && cp == 0x1F600);
-    assert(ui_utf8_next("\x80z", &cp) == 1 && cp == '?');           /* stray continuation */
-    assert(ui_utf8_next("\xD0", &cp) == 1 && cp == '?');            /* cut at the end */
-    assert(ui_utf8_next("\xE2\x80z", &cp) == 2 && cp == '?');
-    assert(ui_utf8_next("", &cp) == 0);
-    assert(ui_utf8_len("Привіт, WT32") == 12);
-    char t1[] = "abcЇ", t2[] = "abc\xD0", t3[] = "ab\xE2\x80", t4[] = "\x80\x80";
-    ui_utf8_trim(t1); ui_utf8_trim(t2); ui_utf8_trim(t3); ui_utf8_trim(t4);
-    assert(!strcmp(t1, "abcЇ") && !strcmp(t2, "abc") && !strcmp(t3, "ab") && !strcmp(t4, "\x80\x80"));
-
-    /* cutting */
-    memset(fb, 0, sizeof(fb));
-    assert(ui_text(fb, 0, 0, "Коротко", 21, false) == 7);
-    assert(ui_text(fb, 0, 0, "дуже-дуже довгий рядок тексту", 21, false) == 21);
-    assert(ui_text(fb, 0, 0, "abc", 0, false) == 0);
-    assert(ui_text(fb, 120, 60, "край екрана", 21, false) == 11);  /* clipped, no overrun */
-    memset(fb, 0, sizeof(fb));
-    ui_text(fb, 0, 0, "\xFF\xFE unknown \xF0\x9F\x98\x80", 21, false);   /* unknown -> '?' glyph */
-    assert(lit(0, 0, 6, 10) > 0);
+    char path[64];
+    snprintf(path, sizeof(path), "../main/i18n/%s.json", lang);
+    FILE *f = fopen(path, "rb");
+    assert(f && "run from wt32/test");
+    static char json[65536];
+    size_t len = fread(json, 1, sizeof(json), f);
+    fclose(f);
+    assert(len > 0 && len < sizeof(json));
+    assert(ui_set_texts(json, len) > 50);
+    snprintf(prefix, sizeof(prefix), "%s_", lang);
 
     ui_info_t in;
     memset(&in, 0, sizeof(in));
@@ -97,23 +81,23 @@ int main(int argc, char **argv)
     {
         char b[96];
         ui_eth_line(b, sizeof(b), &in);
-        assert(!strcmp(b, "Ethernet: немає лінку"));
+        assert(!strcmp(b, eth[0]));
         in.eth_up = true;
         ui_eth_line(b, sizeof(b), &in);
-        assert(!strcmp(b, "Ethernet: є лінк"));          /* up, details not read yet */
+        assert(!strcmp(b, eth[1]));                      /* up, details not read yet */
         in.eth_speed = 100; in.eth_full = true;
         ui_eth_line(b, sizeof(b), &in);
-        assert(!strcmp(b, "Ethernet: 100М повний") && ui_utf8_len(b) <= UI_COLS);
+        assert(!strcmp(b, eth[2]) && ui_utf8_len(b) <= UI_COLS);
         in.eth_speed = 10; in.eth_full = false;
         ui_eth_line(b, sizeof(b), &in);
-        assert(!strcmp(b, "Ethernet: 10М напів") && ui_utf8_len(b) <= UI_COLS);
+        assert(!strcmp(b, eth[3]) && ui_utf8_len(b) <= UI_COLS);
         memset(&in, 0, sizeof(in));
     }
     strcpy(in.version, "0.7.0");
     in.heap = 91234; in.uptime_s = 93784; in.mgmt_port = 28480;
 
     /* client: connected, device known */
-    in.mode = UI_CLIENT; in.wifi_state = 2; strcpy(in.wifi_ssid, "Домашня мережа 5G"); in.rssi = -57;
+    in.mode = UI_CLIENT; in.wifi_state = 2; strcpy(in.wifi_ssid, strcmp(lang, "uk") ? "Home network 5G" : "Домашня мережа 5G");  /* cut: too long */ in.rssi = -57;
     in.mgmt_ip = in.dev_ip = ip(192, 168, 1, 50); in.eth_up = true; in.dev_known = true;
     in.eth_speed = 100; in.eth_full = true;
     memcpy(in.dev_mac, "\x00\x11\x22\x33\x44\x55", 6);
@@ -167,8 +151,69 @@ int main(int argc, char **argv)
         char nm[32]; snprintf(nm, sizeof(nm), "hold_%lu", (unsigned long)holds[i]);
         save(nm);
     }
-    ui_render_notice(fb, "Скидання", "Налаштування стерто.", "Перезапуск…", NULL);
+    ui_render_notice(fb, ui_tr("disp.tReset"), ui_tr("disp.erasing"), ui_tr("disp.restarting"), NULL);
     save("notice");
+
+}
+
+int main(int argc, char **argv)
+{
+    outdir = argc > 1 ? argv[1] : NULL;
+
+    /* font table is sorted (binary search) */
+    for (size_t i = 1; i < font6x10_count; i++) assert(font6x10[i - 1].cp < font6x10[i].cp);
+
+    /* UTF-8 */
+    uint32_t cp;
+    assert(ui_utf8_next("A", &cp) == 1 && cp == 'A');
+    assert(ui_utf8_next("Ї", &cp) == 2 && cp == 0x407);
+    assert(ui_utf8_next("…", &cp) == 3 && cp == 0x2026);
+    assert(ui_utf8_next("\xF0\x9F\x98\x80", &cp) == 4 && cp == 0x1F600);
+    assert(ui_utf8_next("\x80z", &cp) == 1 && cp == '?');           /* stray continuation */
+    assert(ui_utf8_next("\xD0", &cp) == 1 && cp == '?');            /* cut at the end */
+    assert(ui_utf8_next("\xE2\x80z", &cp) == 2 && cp == '?');
+    assert(ui_utf8_next("", &cp) == 0);
+    assert(ui_utf8_len("Привіт, WT32") == 12);
+    char t1[] = "abcЇ", t2[] = "abc\xD0", t3[] = "ab\xE2\x80", t4[] = "\x80\x80";
+    ui_utf8_trim(t1); ui_utf8_trim(t2); ui_utf8_trim(t3); ui_utf8_trim(t4);
+    assert(!strcmp(t1, "abcЇ") && !strcmp(t2, "abc") && !strcmp(t3, "ab") && !strcmp(t4, "\x80\x80"));
+
+    /* cutting */
+    memset(fb, 0, sizeof(fb));
+    assert(ui_text(fb, 0, 0, "Коротко", 21, false) == 7);
+    assert(ui_text(fb, 0, 0, "дуже-дуже довгий рядок тексту", 21, false) == 21);
+    assert(ui_text(fb, 0, 0, "abc", 0, false) == 0);
+    assert(ui_text(fb, 120, 60, "край екрана", 21, false) == 11);  /* clipped, no overrun */
+    memset(fb, 0, sizeof(fb));
+    ui_text(fb, 0, 0, "\xFF\xFE unknown \xF0\x9F\x98\x80", 21, false);   /* unknown -> '?' glyph */
+    assert(lit(0, 0, 6, 10) > 0);
+
+    /* texts: the "disp.*" keys of a flat JSON object, {name} placeholders */
+    assert(!strcmp(ui_tr("disp.tNetwork"), "disp.tNetwork"));          /* none yet: the key */
+    const char *j1 = " { \"page.x\" : \"no\", \"disp.a\":\"Tab\\t \\\"q\\\" \\u0406\\u2026\",\n"
+                     "  \"disp.f\": \"Mode {m}: {n} of {n} {x}\" } ";
+    assert(ui_set_texts(j1, strlen(j1)) == 2);
+    assert(!strcmp(ui_tr("disp.a"), "Tab\t \"q\" І…"));
+    assert(!strcmp(ui_tr("page.x"), "page.x"));                        /* only disp.* kept */
+    char o[40];
+    ui_trf(o, sizeof(o), "disp.f", "n", "5", "m", "ap", NULL);
+    assert(!strcmp(o, "Mode ap: 5 of 5 {x}"));                        /* unknown placeholder stays */
+    ui_trf(o, 9, "disp.f", "m", "Режим", NULL);                        /* cut: not mid-character */
+    assert(!strcmp(o, "Mode Р"));                                     /* 8 bytes: "Р" + half of "е" dropped */
+    ui_trf(o, sizeof(o), "disp.none", NULL);
+    assert(!strcmp(o, "disp.none"));
+    const char *bad[] = { "", "[]", "{\"disp.a\":1}", "{\"disp.a\":\"x\"", "{\"disp.a\":\"x\",}", "{\"disp.a\" \"x\"}",
+                          "{\"disp.a\":\"\\u12\"}", "{\"disp.a\":\"x" };
+    for (size_t i = 0; i < sizeof(bad) / sizeof(bad[0]); i++) {
+        assert(ui_set_texts(bad[i], strlen(bad[i])) == -1);
+        assert(!strcmp(ui_tr("disp.a"), "Tab\t \"q\" І…"));           /* kept on error */
+    }
+    assert(ui_set_texts("{}", 2) == 0 && !strcmp(ui_tr("disp.a"), "disp.a"));
+
+    static const char *const eth_en[4] = { "Ethernet: no link", "Ethernet: link up", "Ethernet: 100M full", "Ethernet: 10M half" };
+    static const char *const eth_uk[4] = { "Ethernet: немає лінку", "Ethernet: є лінк", "Ethernet: 100М повний", "Ethernet: 10М напів" };
+    pages_in("en", eth_en);
+    pages_in("uk", eth_uk);
 
     puts("all display tests passed");
     return 0;

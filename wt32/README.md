@@ -37,7 +37,7 @@ The WT32's cable goes into a router (or a switch on a network with DHCP), and th
 
 Password-protected: default **`12345678`**, changed in the **Page password** section (8–63 characters); while the default is set, the page shows a reminder. A session lasts until 30 min of inactivity; 5 failed attempts in a row lock login for 30 s.
 
-The page is in **English and Ukrainian**: the EN / УКР switch is in the page header and on the login form; the choice is remembered in the browser, and the first visit follows the browser's language. Another language is one JSON file (see [Languages](#languages)).
+The page is in **English and Ukrainian**: the EN / УКР switch is in the page header and on the login form. The choice is remembered in the browser and saved on the WT32, whose display uses it (a switch made before logging in is saved right after it; the first login saves the page's language if none is saved yet). A browser without its own choice opens the page in the WT32's language, or, while none is saved, in the browser's. Another language is one JSON file (see [Languages](#languages)).
 
 - **Status**: mode, Wi-Fi, Ethernet, device MAC/IP, page address; in Client mode — traffic counters with explanations.
 - **Mode**: the Client / Router / Access point switch; for Client — Wi-Fi network selection and password; for Router and Access point — name, password (8–63), channel, WT32 address (for Access point — the fallback one).
@@ -52,7 +52,7 @@ esptool.py --chip esp32 -p rfc2217://c3prog.local:4000 write_flash 0x0 firmware/
 
 ## Display and button (optional)
 
-A 0.96″ 128×64 I2C OLED (SSD1306) and one button. Everything works without them; the button also works without the display. The display texts are in Ukrainian (the English names are given below).
+A 0.96″ 128×64 I2C OLED (SSD1306) and one button. Everything works without them; the button also works without the display. The display speaks the language chosen on the page (EN / УКР: the choice is saved on the WT32).
 
 | What | WT32 pin |
 |---|---|
@@ -63,7 +63,7 @@ A 0.96″ 128×64 I2C OLED (SSD1306) and one button. Everything works without th
 | Button | between **IO4** and GND (internal pull-up, no resistor needed) |
 
 - The display is detected automatically at address 0x3C or 0x3D (in the log: `SSD1306 at 0x3C`). It turns off after 60 s without a press (an OLED burns in from a static image).
-- Pages: **Network** («Мережа»: mode, Wi-Fi, WT32 page address), **Device** («Пристрій»: Ethernet with the negotiated speed and duplex, e.g. `Ethernet: 100М повний`, MAC, IP; in Access point mode — **Cable** («Кабель»): Ethernet, router DHCP, gateway), **Traffic** («Трафік», Client), **Script** («Скрипт»: the script's first 5 `output()` values, if any), **System** («Система»: version, memory, uptime).
+- Pages: **Network** (mode, Wi-Fi, WT32 page address), **Device** (Ethernet with the negotiated speed and duplex, e.g. `Ethernet: 100M full`, MAC, IP; in Access point mode — **Cable**: Ethernet, router DHCP, gateway), **Traffic** (Client), **Script** (the script's first 5 `output()` values, if any), **System** (version, memory, uptime).
 - **Button** (acts on release; while you hold it, the display shows what will happen):
   - short — turn the display on / next page;
   - **5 s** — one-time setup start: the WT32 restarts in Client mode with the `WT32-Setup-XXXX` access point (http://192.168.4.1). The saved mode is not changed: after the next restart the WT32 returns to it, unless something else has been saved on the page;
@@ -183,9 +183,10 @@ Result: ✅ verified on hardware, with the WT32 firmware version it was verified
 | 35 | Power on the WT32 with the display | log `SSD1306 at 0x3C` (or 0x3D); the display shows the Network page, text is readable, not mirrored | |
 | 36 | Press the button briefly, repeatedly | pages cycle, the number is in the title | |
 | 37 | Leave it for 1 min; then press | the display turns off; the first press only turns it on | |
-| 38 | Hold for 3 s and release | the display shows "Hold until 5 s…" («Тримайте до 5 с…») and a bar; nothing happens after release | |
+| 38 | Hold for 3 s and release | the display shows "Hold until 5 s:" and a bar; nothing happens after release | |
 | 39 | Hold for 6 s and release | restart; `WT32-Setup-XXXX` access point, the page shows "One-time setup start"; another restart — the saved mode | |
-| 40 | Hold for 11 s and release | "RESET…" («СКИДАННЯ…»), restart; Client mode with no network, page password `12345678` | |
+| 40 | Hold for 11 s and release | "RESET the settings", restart; Client mode with no network, page password `12345678` | |
+| 41 | On the page switch EN ↔ УКР; then restart the WT32 | the display changes language within a second; after the restart it keeps the last choice | |
 
 If something does not work, attach the filled-in tables, screenshots of the page and a few lines of the log to an issue.
 
@@ -236,9 +237,9 @@ kill %1                         #       script_flow.js 8811, dhcp_flow.js 8811, 
 
 ## Languages
 
-The page texts live in JSON files, one per language: [`main/i18n/`](main/i18n/) (this page), [`shared/wifi_setup/i18n/`](../shared/wifi_setup/i18n/) (login, password, firmware, device errors) and [`shared/script_berry/i18n/`](../shared/script_berry/i18n/) (scripts). The build merges them into the firmware (`portal_i18n()` in `main/CMakeLists.txt`), and the device serves them at `/i18n.json`.
+The page texts live in JSON files, one per language: [`main/i18n/`](main/i18n/) (this page, and the display: keys `disp.*`), [`shared/wifi_setup/i18n/`](../shared/wifi_setup/i18n/) (login, password, firmware, device errors) and [`shared/script_berry/i18n/`](../shared/script_berry/i18n/) (scripts). The build merges them into the firmware (`portal_i18n()` in `main/CMakeLists.txt`), and the device serves them at `/i18n.json`.
 
-To add a language, e.g. German: copy `en.json` to `de.json` in each of the three folders, translate the values (keep the keys and the `{placeholders}`), set `"_name": "Deutsch"` and `"_label": "DE"` in the `shared/wifi_setup/i18n/de.json`, and rebuild. The switch lists the new language by itself (as a drop-down from four languages on). A text missing in a language is shown in English; `i18n_bundle.py check` (above) lists what is missing.
+To add a language, e.g. German: copy `en.json` to `de.json` in each of the three folders, translate the values (keep the keys and the `{placeholders}`), set `"_name": "Deutsch"` and `"_label": "DE"` in the `shared/wifi_setup/i18n/de.json`, and rebuild. The switch lists the new language by itself (as a drop-down from four languages on). A text missing in a language is shown in English; `i18n_bundle.py check` (above) lists what is missing. The display texts (`disp.*`) must fit a 21-character line (the check says which do not), and the display font has Latin and Cyrillic letters only: other scripts show as `?` there.
 
 ## Layout
 
