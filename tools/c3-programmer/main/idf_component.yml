@@ -1,0 +1,8 @@
+dependencies:
+  idf: ">=5.1.0"
+  # Pulled from git so the build does not depend on the component registry.
+  # v0.4.0 is the first release that escapes 0xFF (IAC) bytes in outgoing data,
+  # which esptool's binary protocol needs.
+  rfc2217-server:
+    git: https://github.com/igrr/rfc2217-server.git
+    version: v0.4.0

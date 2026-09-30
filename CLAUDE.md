@@ -1,0 +1,83 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+WT32-ETH01 (ESP32 + LAN8720) firmware that gives Wi-Fi to **one** Ethernet-only device (any device; a network printer is used for testing), or extends a wired network over Wi-Fi (access point mode). The firmware is device-agnostic: it forwards frames and never processes or rewrites the device's data; there is no device-specific logic or plan for it.
+
+Written from scratch under the MIT license (`LICENSE`), inspired by martin-ger/esp32_eth_wifi_bridge (see Credits in `README.md`); the default branch is `main`. Docs, code and comments are in English. Every doc has a Ukrainian translation next to it named `<name>_UA.md` (e.g. `README_UA.md`); when a doc changes, update its `_UA` twin in the same commit. The web page, the display and the device's messages are currently in Ukrainian. Nothing has been verified on hardware yet — keep "built/tested on host" and "verified on the device" apart.
+
+## Layout
+
+```
+wt32/                 main firmware (ESP-IDF project)
+  main/main.c           mode dispatch, UART summary every 10 s
+  main/settings.c       mode + own-network settings (NVS "wt32")
+  main/eth.c            EMAC + LAN8720 (PHY addr 1, MDC 23, MDIO 18, power 16, clock in GPIO0)
+  main/client_mode.c    client mode: station <-> Ethernet forwarding, "MGMT" netif on the shared IP
+  main/l2rewrite.c      pure C: MAC rewriting in frames/ARP/DHCP, DHCP ACK snooping
+  main/mgmt_demux.c     pure C: frame from Wi-Fi -> device / WT32 / both
+  main/own_mode.c       router and access point modes: AP + Ethernet lwIP bridge; AP-mode uplink (DHCP client, fallback)
+  main/dhcp_core.c      pure C: DHCP server logic (pool, leases, MAC reservations, save/load), DHCP probe
+  main/dhcp_server.c    DHCP server task (UDP 67), leases in NVS "wt32"/"dhcp"
+  main/display.c        SSD1306 (I2C, IO32/33) + button (IO4) task
+  main/disp_ui.c        pure C: display pages into a 128x64 framebuffer; font6x10.c (misc-fixed, tools/gen_font.py)
+  main/button.c         pure C: debounce + press length (short / 5 s / 10 s, acting on release)
+  main/web.c, page.html web page (mode switch, per-mode status)
+  test/                 host tests (C, ASan/UBSan) + Playwright page test with a mock API
+tools/c3-programmer/  ESP32-C3 SuperMini: RFC2217 + USB programmer/monitor for the WT32
+shared/wifi_setup/    component used by both apps: Wi-Fi station + setup AP + captive DNS,
+                      web server core (/api/status, scan, wifi, forget), page password (auth.js),
+                      OTA upload + rollback confirmation (ota.js)
+shared/script_berry/  Berry user script: VM task, memory/time limits, crash guard, storage partition,
+                      /api/script* + script.js; berry/ is a git submodule (pinned commit)
+shared/partitions/    4mb_ota.csv: nvs, otadata, ota_0/ota_1 (1.875 MB each), storage (128 KB, littlefs)
+hardware/case/        3D-printed case: build_case.py (manifold3d CSG) -> stl/ in print orientation + check_report.txt;
+                      WT32 sizes from the egnor/wt32-eth01 STEP (downloaded by --step, not committed: no license);
+                      OLED/USB-C/switch are typical values; every check in the report must be "ok"
+docs/ARCHITECTURE.md  decisions, stages, open questions
+```
+
+## Build
+
+ESP-IDF >= 6.0 (tested on 6.1). Run `git submodule update --init` first (Berry); its constant tables are generated at build time by `berry/tools/coc`. The LAN87xx PHY driver comes from `espressif/esp-eth-drivers`; `rfc2217-server` and `mdns` are also pulled from git (not the component registry).
+
+```bash
+. $IDF_PATH/export.sh
+cd wt32 && ./build_firmware.sh                  # -> wt32/firmware/wt32-bridge.bin (flash at 0x0)
+cd tools/c3-programmer && ./build_firmware.sh   # -> firmware/c3-programmer.bin
+```
+
+Prebuilt images are committed in each project's `firmware/`: `<name>.bin` (merged, flash at 0x0 over serial) and `<name>-ota.bin` (app only, for the web update). Rebuild them when the code changes, and bump `PROJECT_VER` for releases.
+
+## Tests
+
+```bash
+cd wt32/test
+cc -Wall -Wextra -fsanitize=address,undefined -I../main -o /tmp/l2t l2rewrite_test.c ../main/l2rewrite.c && /tmp/l2t
+cc -Wall -Wextra -fsanitize=address,undefined -I../main -o /tmp/dmx mgmt_demux_test.c ../main/mgmt_demux.c && /tmp/dmx
+cc -Wall -Wextra -fsanitize=address,undefined -I../main -o /tmp/dct dhcp_core_test.c ../main/dhcp_core.c && /tmp/dct
+cc -Wall -Wextra -fsanitize=address,undefined -I../main -o /tmp/btn button_test.c ../main/button.c && /tmp/btn
+cc -Wall -Wextra -fsanitize=address,undefined -I../main -o /tmp/dui disp_ui_test.c ../main/disp_ui.c ../main/font6x10.c ../main/button.c && /tmp/dui [dir-for-pbm-screens]
+python3 dhcp_scapy_test.py                         # needs scapy; builds dhcp_core.c as a shared lib
+python3 mock_wt32.py ../main/page.html ../../shared/wifi_setup/auth.js 8811 &     # Playwright tests:
+node mode_flow.js 8811 && node ota_flow.js 8811 ../firmware/wt32-bridge.bin ../firmware/wt32-bridge-ota.bin
+node script_flow.js 8811 && node dhcp_flow.js 8811
+../../shared/script_berry/test/run_host_test.sh    # Berry with our berry_conf.h: prelude, limits, errors
+# C3 page: shared/wifi_setup/test (mock_portal.py + login_flow.js)
+```
+
+Keep pure logic (frame parsing, demux) free of ESP-IDF headers so it stays host-testable.
+
+## Key behaviours
+
+- **Client mode**: an 802.11 station may use only its own MAC, so device frames leave with the station MAC and MACs inside ARP/DHCP (chaddr, option 61 both ways) are swapped; the router sees one client under the station MAC. EMAC is promiscuous; IPv6 is dropped by default. The WT32 shares the device's IP and takes only new TCP connections to the management port (default 28480, kept below ephemeral ranges) and flows it opened itself; broadcast/multicast/ARP go to both. The setup AP stays up while the network is unconfigured/unreachable or the device's IP is unknown.
+- **Modes**: `client`, `own` (shown as «Роутер»), `ap` («Точка доступу»); the two AP modes share the own_* settings (SSID, password, channel, IP).
+- **Router mode (`own`)**: WPA2/WPA3 AP; AP and Ethernet in one lwIP bridge (static IP, WT32 at 192.168.77.1 by default); own DHCP server instead of IDF's dhcps: pool .100-.200, 2 h leases, up to 32 clients, router = WT32, no DNS; a MAC keeps its address; reservations MAC -> IP (any address in the subnet but the WT32's) from the page; leases saved to NVS every 30 s (remaining time, no wall clock), reservations immediately. Relayed requests (giaddr) are ignored.
+- **Access point mode (`ap`)**: same bridge, but the bridge netif is a DHCP client of the network on the cable (router's DHCP passes through; no MAC rewriting). No address for 30 s -> DHCP client stopped, static fallback own_ip/24, and the DHCP server (disabled until then) serves only AP stations (`esp_wifi_ap_get_sta_list`), 2-min leases, not persisted. While on fallback, a probe DISCOVER (own UDP socket on 68, bound to the bridge) goes out every 30 s and on Ethernet link-up; an OFFER from another server -> server off, DHCP client on. Page on port 80 / `wt32.local`.
+- **Display and button** (optional): SSD1306 128x64 at 0x3C/0x3D, dark after 60 s without a press; pages per mode + script outputs + system. Button acts on release: short = wake/next page, 5 s = one-time setup start (RTC_NOINIT flag + SW reset -> client mode with `ap_always_on`, saved mode untouched, page shows `setupBoot`), 10 s = `nvs_flash_erase()` + restart; a button held at power-on is ignored until released.
+- **Web page**: port 80 (setup AP / own network) and the management port (client mode). Every API route except login needs a session; default password `12345678`, salted SHA-256 in NVS, 30-min sessions, 30 s lockout after 5 failures.
+- **OTA**: POST /api/ota with the app image; header checked (magic, chip id, project name) before any flash write; sequential writes into the inactive slot; the new image is confirmed (`esp_ota_mark_app_valid_cancel_rollback`) after 60 s with the web server up, otherwise the bootloader rolls back.
+- **Scripts (Berry)**: one user script from the "storage" partition, compiled from a flash mapping by the script task (core 1, low priority). Allocations go through a budget allocator (default 40 KB; beyond it Berry returns BE_MALLOC_FAIL), the VM heartbeat hook raises `timeout_error` after 2 s of one run, any error stops the script, and an abnormal reset while script code runs (RTC_NOINIT marker) turns autostart off. Only the script task maps or writes the partition; the page reads it in chunks. API: print, output, every/after/cancel, status (the page's status JSON), millis, heap.
+- **C3 programmer**: RTS -> EN, DTR -> IO0, both open-drain (IO0 is the WT32's Ethernet clock input after boot; never drive it high). IO0 is held low 50 ms after EN release. `miniterm` over RFC2217 needs `--rts 0 --dtr 0`.

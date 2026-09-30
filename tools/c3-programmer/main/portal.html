@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>C3-програматор</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--fg:#1c1f24;--mute:#6b7280;--acc:#2563eb;--ok:#15803d;--bad:#b91c1c;--line:#d8dce2}
+@media(prefers-color-scheme:dark){:root{--bg:#111418;--card:#1b1f25;--fg:#e8eaed;--mute:#9aa1ab;--acc:#5b8def;--ok:#4ade80;--bad:#f87171;--line:#2d333b}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:480px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:4px 0 16px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+h2{font-size:16px;margin:0 0 12px}
+label{display:block;font-size:14px;color:var(--mute);margin:12px 0 4px}
+input,select,button{width:100%;font:inherit;padding:12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg)}
+button{background:var(--acc);color:#fff;border:0;font-weight:600;margin-top:16px;cursor:pointer}
+button.sec{background:transparent;color:var(--acc);border:1px solid var(--acc)}
+button.danger{background:transparent;color:var(--bad);border:1px solid var(--bad)}
+button:disabled{opacity:.5}
+.row{display:flex;gap:8px}.row>*{flex:1}
+code{font-size:13px;word-break:break-all;background:var(--bg);padding:2px 6px;border-radius:4px}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.mute{color:var(--mute);font-size:14px}
+#msg{min-height:1.4em;margin-top:12px}
+</style>
+<script src="/auth.js"></script>
+<script src="/ota.js"></script>
+</head>
+<body>
+<main>
+<h1>C3-програматор WT32</h1>
+
+<section>
+<h2>Стан</h2>
+<div id="state" class="mute">Завантаження…</div>
+<div id="rfc" style="margin-top:8px"></div>
+</section>
+
+<section>
+<h2>Wi-Fi</h2>
+<label for="ssid">Мережа</label>
+<select id="ssid"><option value="">Сканую…</option></select>
+<input id="ssidManual" placeholder="Назва мережі вручну" style="display:none;margin-top:8px">
+<button class="sec" id="rescan" type="button">Оновити список</button>
+<label for="pass">Пароль</label>
+<input id="pass" type="password" autocomplete="current-password" placeholder="Порожньо — відкрита мережа">
+<label for="host">Імʼя пристрою</label>
+<input id="host" autocapitalize="off" spellcheck="false" placeholder="c3prog">
+<div class="mute" style="margin-top:4px">Адреса буде <code id="hostHint">c3prog.local</code></div>
+<button id="save" type="button">Зберегти і перезапустити</button>
+</section>
+
+<section>
+<h2>WT32-ETH01</h2>
+<div class="row">
+<button class="sec" id="reset" type="button">Перезапустити</button>
+<button class="sec" id="boot" type="button">Режим прошивки</button>
+</div>
+<div class="mute" style="margin-top:8px">«Режим прошивки» — для прошивки по USB з <code>--before no_reset</code>.</div>
+</section>
+
+<section id="auth"></section>
+
+<section id="ota"></section>
+
+<section>
+<button class="danger" id="forget" type="button">Забути Wi-Fi</button>
+<div id="msg"></div>
+<div class="mute" id="ver"></div>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const msg=(t,bad)=>{const m=$('msg');m.textContent=t;m.className=bad?'bad':'ok'};
+let hostSet=false;
+
+async function post(url,data){
+  const r=await fetch(url,{method:'POST',body:new URLSearchParams(data)});
+  const j=await r.json().catch(()=>({ok:false,message:'Немає відповіді'}));
+  if(!j.ok)throw new Error(j.message||'Помилка');
+  return j;
+}
+
+async function status(){
+  try{
+    const s=await (await fetch('/api/status')).json();
+    const st=$('state');
+    if(s.state==='connected'){st.className='ok';
+      st.textContent=`Підключено до «${s.ssid}», IP ${s.ip}, сигнал ${s.rssi} дБм`;}
+    else if(s.state==='connecting'){st.className='mute';st.textContent=`Підключення до «${s.ssid}»…`+(s.ap?` Точка налаштування «${s.apSsid}» увімкнена.`:'');}
+    else{st.className='mute';st.textContent='Мережу не збережено. Оберіть Wi-Fi нижче.';}
+    const r=$('rfc');r.innerHTML='';
+    if(s.state==='connected'){
+      const a=document.createElement('code');a.textContent=`rfc2217://${s.host}.local:${s.port}`;
+      const b=document.createElement('code');b.textContent=`rfc2217://${s.ip}:${s.port}`;
+      r.append('Порт для esptool / idf.py: ',a,' або ',b);
+    }
+    if(s.client){const c=document.createElement('div');c.className='ok';c.textContent='Зараз підключений клієнт RFC2217';r.append(c);}
+    if(!hostSet){$('host').value=s.host;hint();hostSet=true;}
+    $('ver').textContent='Версія '+s.version;
+  }catch(e){$('state').className='bad';$('state').textContent='Немає звʼязку з пристроєм';}
+}
+
+async function scan(){
+  const sel=$('ssid');sel.disabled=true;sel.innerHTML='<option value="">Сканую…</option>';
+  let list=[];
+  try{list=await (await fetch('/api/scan')).json();}catch(e){}
+  const seen=new Set();sel.innerHTML='';
+  list.sort((a,b)=>b.rssi-a.rssi).forEach(n=>{
+    if(seen.has(n.ssid))return;seen.add(n.ssid);
+    const o=document.createElement('option');o.value=n.ssid;
+    o.textContent=`${n.ssid}  (${n.rssi} дБм${n.open?', відкрита':''})`;sel.append(o);
+  });
+  if(!list.length){const o=document.createElement('option');o.value='';o.textContent='Мереж не знайдено — оновіть';sel.append(o);}
+  const m=document.createElement('option');m.value='__manual';m.textContent='Інша (ввести вручну)…';sel.append(m);
+  sel.disabled=false;pick();
+}
+function pick(){$('ssidManual').style.display=$('ssid').value==='__manual'?'block':'none'}
+function hint(){$('hostHint').textContent=($('host').value||'c3prog')+'.local'}
+
+$('ssid').onchange=pick;
+$('host').oninput=hint;
+$('rescan').onclick=scan;
+$('save').onclick=async()=>{
+  const ssid=$('ssid').value==='__manual'?$('ssidManual').value.trim():$('ssid').value;
+  if(!ssid)return msg('Оберіть мережу',true);
+  $('save').disabled=true;
+  try{await post('/api/wifi',{ssid,pass:$('pass').value,host:$('host').value.trim().toLowerCase()});
+    msg(`Збережено. Пристрій перезапускається й підключиться до «${ssid}». Відкрийте http://${($('host').value.trim().toLowerCase()||'c3prog')}.local з тієї мережі.`);}
+  catch(e){msg(e.message,true);$('save').disabled=false;}
+};
+$('reset').onclick=async()=>{try{await post('/api/target',{action:'reset'});msg('WT32 перезапущено');}catch(e){msg(e.message,true)}};
+$('boot').onclick=async()=>{try{await post('/api/target',{action:'boot'});msg('WT32 у режимі прошивки');}catch(e){msg(e.message,true)}};
+$('forget').onclick=async()=>{
+  if(!confirm('Забути мережу Wi-Fi? Пристрій перезапуститься в режим налаштування.'))return;
+  try{await post('/api/forget',{});msg('Мережу забуто. Підключіться до точки «C3prog-Setup-…».');}catch(e){msg(e.message,true)}
+};
+
+status();scan();setInterval(status,5000);
+</script>
+</body>
+</html>

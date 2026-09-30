@@ -1,0 +1,14 @@
+# ESP-IDF build output (per project)
+build/
+sdkconfig
+sdkconfig.old
+managed_components/
+dependencies.lock
+!sdkconfig.defaults
+
+# editors / tools
+.vscode/
+.pio*
+__pycache__/
+.mcp.json
+.gemini/

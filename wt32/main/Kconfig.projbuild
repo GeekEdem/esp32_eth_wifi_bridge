@@ -1,0 +1,89 @@
+menu "WT32 bridge"
+
+    config WT32_WIFI_SSID
+        string "Default Wi-Fi SSID for the client mode (optional)"
+        default ""
+        help
+            Normally the network is chosen on the web page.
+
+    config WT32_WIFI_PASSWORD
+        string "Default Wi-Fi password (optional)"
+        default ""
+
+    config WT32_HOSTNAME
+        string "mDNS name"
+        default "wt32"
+
+    config WT32_OWN_IP
+        string "Default WT32 address in the own-network mode"
+        default "192.168.77.1"
+        help
+            The network is the /24 around it; DHCP hands out .100-.200.
+
+    config WT32_MGMT_PORT
+        int "Management port on the shared IP (client mode)"
+        range 1024 32767
+        default 28480
+        help
+            The WT32 answers on the device's IP on this TCP port only.
+            Kept below the usual ephemeral ranges (Linux 32768-60999,
+            Windows/lwIP 49152-65535) and away from well-known services.
+
+    config WT32_FORWARD_IPV6
+        bool "Forward IPv6 in the client mode"
+        default n
+        help
+            IPv6 neighbour discovery carries the device MAC inside the packet,
+            which is not rewritten yet. With this off the device is reachable
+            over IPv4 only, which avoids half-working IPv6.
+
+    config WT32_SCRIPT_MEM_KB
+        int "Memory budget of the user script, KB"
+        range 16 96
+        default 40
+        help
+            Allocations of the Berry script beyond this fail as a script error
+            instead of starving Wi-Fi, Ethernet and the web server.
+
+    config WT32_I2C_SDA_GPIO
+        int "Display I2C SDA GPIO (-1 = no display)"
+        default 32
+        help
+            SSD1306 128x64 on I2C, found at 0x3C or 0x3D. IO32 is labelled
+            CFG on the WT32-ETH01 header.
+
+    config WT32_I2C_SCL_GPIO
+        int "Display I2C SCL GPIO"
+        default 33
+        help
+            IO33 is labelled 485_EN on the WT32-ETH01 header.
+
+    config WT32_BUTTON_GPIO
+        int "Button GPIO, to GND (-1 = none)"
+        default 4
+        help
+            Internal pull-up. Short press: screen on / next page; hold 5 s:
+            one-time setup start; hold 10 s: reset of the settings.
+
+    config WT32_DISPLAY_TIMEOUT_S
+        int "Screen off after this many seconds without a press (0 = never)"
+        range 0 3600
+        default 60
+
+    config WT32_ETH_MDC_GPIO
+        int "ETH MDC GPIO"
+        default 23
+
+    config WT32_ETH_MDIO_GPIO
+        int "ETH MDIO GPIO"
+        default 18
+
+    config WT32_ETH_PHY_ADDR
+        int "ETH PHY address"
+        default 1
+
+    config WT32_ETH_PHY_POWER_GPIO
+        int "ETH PHY/oscillator power GPIO (-1 = none)"
+        default 16
+
+endmenu

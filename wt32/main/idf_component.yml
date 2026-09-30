@@ -1,0 +1,12 @@
+dependencies:
+  idf: ">=6.0"
+  # Since ESP-IDF 6.0 the PHY drivers live in esp-eth-drivers.
+  # From git so the build does not depend on the component registry.
+  lan87xx:
+    git: https://github.com/espressif/esp-eth-drivers.git
+    path: lan87xx
+    version: lan87xx@v1.1.0
+  mdns:
+    git: https://github.com/espressif/esp-protocols.git
+    path: components/mdns
+    version: mdns-v1.13.1

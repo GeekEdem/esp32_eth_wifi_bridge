@@ -1,0 +1,7 @@
+dependencies:
+  idf: ">=5.1.0"
+  # From git so the build does not depend on the component registry.
+  mdns:
+    git: https://github.com/espressif/esp-protocols.git
+    path: components/mdns
+    version: mdns-v1.13.1

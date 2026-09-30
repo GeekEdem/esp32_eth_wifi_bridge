@@ -1,0 +1,75 @@
+case outside: 33.4 x 75.5 x 29.9 mm (with the lid)
+ok    base: one closed solid (3320 triangles, 19551 mm³)
+ok    lid: one closed solid (2766 triangles, 4382 mm³)
+ok    button: one closed solid (380 triangles, 162 mm³)
+ok    base / lid: overlap -0.000 mm³
+ok    base / button: overlap 0.000 mm³
+ok    lid / button: overlap -0.000 mm³
+ok    base / wt32 (with headers): overlap 0.000 mm³
+ok    base / oled: overlap 0.000 mm³
+ok    base / usb-c: overlap 0.000 mm³
+ok    base / switch: overlap 0.000 mm³
+ok    lid / wt32 (with headers): overlap 0.000 mm³
+ok    lid / usb-c: overlap 0.000 mm³
+ok    lid / switch: overlap 0.000 mm³
+ok    lid / screws: overlap 0.000 mm³
+ok    button / wt32 (with headers): overlap 0.000 mm³
+ok    button / oled: overlap 0.000 mm³
+ok    button / usb-c: overlap 0.000 mm³
+ok    button / switch: overlap 0.000 mm³
+ok    button / screws: overlap 0.000 mm³
+ok    lid / oled (pegs in the holes): overlap -0.000 mm³
+ok    inside: oled / wt32 (with headers) do not overlap
+ok    inside: oled / usb-c do not overlap
+ok    inside: oled / switch do not overlap
+ok    inside: oled / screws do not overlap
+ok    inside: usb-c / wt32 (with headers) do not overlap
+ok    inside: switch / wt32 (with headers) do not overlap
+ok    inside: switch / usb-c do not overlap
+ok    inside: screws / wt32 (with headers) do not overlap
+ok    inside: screws / usb-c do not overlap
+ok    inside: screws / switch do not overlap
+ok    RJ45 to the base: gap 0.40 mm
+ok    RJ45 to the lid: gap 0.20 mm
+ok    WT32 (with headers) to the base apart from its posts: gap 0.30 mm
+ok    WT32 to the lid: gap 0.20 mm
+ok    OLED (back) above the WT32 parts: gap 8.25 mm (room for its wires)
+ok    USB-C breakout under the WT32 (RJ45 pins, headers): gap 1.57 mm
+ok    plunger in its lid hole: radial gap 0.30 mm
+ok    switch body between the walls on its post: gap 0.20 mm
+ok    switch legs past the sides of the post: gap 0.40 mm
+ok    plunger above the switch actuator: 0.30 mm
+ok    STEP WT32-ETH01 (41 solids, [-12.0, -36.3, -1.5] .. [13.4, 24.0, 15.05]): no overlap with the case
+ok    STEP board to the base apart from its posts: gap 0.30 mm
+ok    STEP board to the lid: gap 0.20 mm
+      base: wall in front of the USB-C receptacle — thinnest 0.80 mm (intended)
+ok    base: walls and ribs at least 1.2 mm (3 perimeters of 0.4; thinnest 1.20 mm)
+      lid: window edge under the chamfer — thinnest 0.81 mm (intended)
+ok    lid: walls and ribs at least 1.2 mm (3 perimeters of 0.4; thinnest 1.70 mm)
+ok    button: walls and ribs at least 1.2 mm (3 perimeters of 0.4; thinnest 1.20 mm)
+      base: overhang 1.3 x 4.0 mm at z 10.0 (5.2 mm²)
+      base: overhang 1.3 x 4.0 mm at z 10.0 (5.2 mm²)
+      base: overhang 1.3 x 4.0 mm at z 10.0 (5.2 mm²)
+      base: overhang 1.3 x 4.0 mm at z 10.0 (5.2 mm²)
+      base: overhang 11.3 x 1.6 mm at z 8.6 (18.8 mm²)
+      base: overhang 8.5 x 0.8 mm at z 7.1 (7.0 mm²)
+      base: overhang 2.4 x 1.6 mm at z 25.4 (3.8 mm²)
+      base: overhang 2.4 x 1.6 mm at z 25.4 (3.8 mm²)
+      base: overhang 2.4 x 1.6 mm at z 25.4 (3.8 mm²)
+      base: overhang 2.4 x 1.6 mm at z 25.4 (3.8 mm²)
+      base: overhang 2.4 x 1.6 mm at z 25.4 (3.8 mm²)
+      base: overhang 2.4 x 1.6 mm at z 25.4 (3.8 mm²)
+      base: overhang 2.4 x 1.6 mm at z 25.4 (3.8 mm²)
+      base: overhang 2.4 x 1.6 mm at z 25.4 (3.8 mm²)
+      base: overhang 2.4 x 1.6 mm at z 25.4 (3.8 mm²)
+      base: overhang 2.4 x 1.6 mm at z 25.4 (3.8 mm²)
+      base: overhang 2.4 x 1.6 mm at z 25.4 (3.8 mm²)
+      base: overhang 2.4 x 1.6 mm at z 25.4 (3.8 mm²)
+      base: overhang 2.4 x 1.6 mm at z 25.4 (3.8 mm²)
+      base: overhang 2.4 x 1.6 mm at z 25.4 (3.8 mm²)
+ok    base: overhangs are bridges/ledges of at most 13 mm (widest 1.6 mm)
+ok    lid: overhangs are bridges/ledges of at most 13 mm (widest 0.0 mm)
+ok    button: overhangs are bridges/ledges of at most 13 mm (widest 0.0 mm)
+ok    base: printed STL turned back into place matches the assembly (19550.9 of 19550.9 mm³)
+ok    lid: printed STL turned back into place matches the assembly (4381.6 of 4381.6 mm³)
+ok    button: printed STL turned back into place matches the assembly (162.1 of 162.1 mm³)

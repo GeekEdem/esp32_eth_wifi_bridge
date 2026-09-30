@@ -1,0 +1,83 @@
+menu "C3 Programmer Configuration"
+
+    config C3PROG_WIFI_SSID
+        string "Default Wi-Fi SSID (optional)"
+        default ""
+        help
+            Normally the network is chosen in the setup portal and saved to
+            NVS. A value here is only used while nothing is saved.
+
+    config C3PROG_WIFI_PASSWORD
+        string "Default Wi-Fi password (optional)"
+        default ""
+
+    config C3PROG_HOSTNAME
+        string "Default hostname (DHCP and mDNS)"
+        default "c3prog"
+        help
+            The programmer is reachable as <hostname>.local. Can be changed
+            in the web page.
+
+    config C3PROG_WIFI_TX_POWER
+        int "Wi-Fi max TX power, 0.25 dBm units (0 = driver default)"
+        range 0 84
+        default 34
+        help
+            Many ESP32-C3 SuperMini boards fail to associate at full power
+            because of the antenna layout. 34 (8.5 dBm) is the usual fix.
+            Set 0 to keep the driver default.
+
+    config C3PROG_RFC2217_PORT
+        int "RFC2217 TCP port"
+        default 4000
+
+    config C3PROG_UART_NUM
+        int "UART port connected to the target"
+        default 1
+
+    config C3PROG_UART_TX_GPIO
+        int "UART TX GPIO (to target RXD / IO3)"
+        default 4
+
+    config C3PROG_UART_RX_GPIO
+        int "UART RX GPIO (from target TXD / IO1)"
+        default 5
+
+    config C3PROG_UART_BAUD
+        int "Default target baud rate"
+        default 115200
+        help
+            Used for the USB path and restored after each network session.
+
+    config C3PROG_EN_GPIO
+        int "Target EN GPIO (open-drain)"
+        default 6
+
+    config C3PROG_BOOT_GPIO
+        int "Target IO0 GPIO (open-drain)"
+        default 7
+
+    config C3PROG_BOOT_HOLD_MS
+        int "Keep IO0 low at least this long after EN release (ms)"
+        default 50
+        help
+            Guards the bootloader strapping against network jitter when the
+            DTR/RTS sequence arrives over RFC2217.
+
+    config C3PROG_BUTTON_GPIO
+        int "Button GPIO (-1 = none)"
+        default 9
+        help
+            GPIO9 is the BOOT button on the SuperMini. < 1 s: target
+            bootloader; 1-5 s: target reset; 5-10 s: restart the programmer;
+            >= 10 s: forget Wi-Fi.
+
+    config C3PROG_LED_GPIO
+        int "Status LED GPIO (-1 = none)"
+        default 8
+
+    config C3PROG_LED_ACTIVE_LOW
+        bool "Status LED is active low"
+        default y
+
+endmenu

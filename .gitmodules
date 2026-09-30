@@ -1,0 +1,3 @@
+[submodule "shared/script_berry/berry"]
+	path = shared/script_berry/berry
+	url = https://github.com/berry-lang/berry.git

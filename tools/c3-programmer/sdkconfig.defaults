@@ -1,0 +1,19 @@
+CONFIG_IDF_TARGET="esp32c3"
+
+# ESP32-C3 SuperMini: 4 MB flash
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+# Two OTA slots + rollback (shared layout)
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="../../shared/partitions/4mb_ota.csv"
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+
+# USB-Serial/JTAG carries the WT32 UART stream, so the C3's own log console
+# stays on UART0 (GPIO21) only and is not mixed into the USB data.
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
+
+# 1 ms tick for tighter EN/IO0 timing
+CONFIG_FREERTOS_HZ=1000
+
+# Phones send long headers in captive-portal checks
+CONFIG_HTTPD_MAX_REQ_HDR_LEN=1024

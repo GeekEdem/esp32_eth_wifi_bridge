@@ -1,0 +1,31 @@
+// Browser test of auth.js with a page, against mock_portal.py (see README in this folder).
+const { chromium } = require('playwright');
+const assert = require('assert');
+(async () => {
+  const port = process.argv[2], name = process.argv[3];
+  const b = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
+  const p = await b.newPage();
+  const errors = []; p.on('pageerror', e => errors.push(e.message));
+  await p.goto(`http://127.0.0.1:${port}/`);
+  await p.waitForSelector('#loginOv', { timeout: 5000 });
+  assert.strictEqual(await p.locator('#loginOv').count(), 1, 'exactly one login form despite parallel 401s');
+  await p.fill('#loginOv input', 'wrong'); await p.click('#loginOv button');
+  await p.waitForFunction(() => document.querySelector('#loginOv .bad').textContent.includes('Невірний'));
+  await p.fill('#loginOv input', '12345678'); await p.click('#loginOv button');
+  await p.waitForSelector('#loginOv', { state: 'detached' });
+  await p.waitForFunction(() => !document.querySelector('#auth .bad').hidden, null, { timeout: 5000 });
+  if (name === 'wt32') await p.waitForFunction(() => document.getElementById('devIp').textContent === '192.168.1.50');
+  else await p.waitForFunction(() => document.getElementById('state').textContent.includes('Підключено'));
+  const inputs = p.locator('#auth input');
+  await inputs.nth(0).fill('12345678'); await inputs.nth(1).fill('newpass99'); await inputs.nth(2).fill('newpass99');
+  await p.click('#auth button:has-text("Змінити пароль")');
+  await p.waitForFunction(() => document.querySelector('#auth .ok')?.textContent === 'Пароль змінено');
+  assert(await p.locator('#auth .bad[hidden]').count() === 1, 'default-password warning hidden');
+  await p.click('#auth button:has-text("Вийти")');
+  await p.waitForSelector('#loginOv', { timeout: 5000 });
+  await p.fill('#loginOv input', 'newpass99'); await p.click('#loginOv button');
+  await p.waitForSelector('#loginOv', { state: 'detached' });
+  assert.deepStrictEqual(errors, [], 'no page errors');
+  console.log(`${name}: login flow ok`);
+  await b.close();
+})().catch(e => { console.error(e); process.exit(1); });
