@@ -2,7 +2,7 @@
 // against the test mocks (wt32/test/mock_wt32.py, shared/wifi_setup/test/mock_portal.py).
 // The Firmware section shows the version, build time and SHA-256 read from the
 // committed firmware/*-ota.bin images; the commit comes from $COMMIT (the one the
-// images were built from) or HEAD.
+// images were built from; $C3_COMMIT for the C3 image if it differs) or HEAD.
 // Usage, from the repository root: node docs/img/screenshots.js   (needs playwright)
 const { chromium } = require('playwright');
 const { spawn, execSync } = require('child_process');
@@ -15,7 +15,7 @@ const W = 390;                                   // phone width
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // esp_app_desc_t at offset 32 of an app image
-function buildInfo(bin, project) {
+function buildInfo(bin, project, commit) {
   const b = fs.readFileSync(path.join(ROOT, bin));
   const str = (off, len) => b.subarray(off, off + len).toString('latin1').replace(/\0.*$/s, '');
   const d = 32;
@@ -23,7 +23,7 @@ function buildInfo(bin, project) {
   return {
     project, version: str(d + 16, 32), time: str(d + 80, 16), date: str(d + 96, 16), idf: str(d + 112, 32),
     elf: b.subarray(d + 144, d + 152).toString('hex'),
-    commit: process.env.COMMIT || execSync('git rev-parse --short=10 HEAD', { cwd: ROOT }).toString().trim(),
+    commit: commit || process.env.COMMIT || execSync('git rev-parse --short=10 HEAD', { cwd: ROOT }).toString().trim(),
   };
 }
 
@@ -109,7 +109,7 @@ function mock(args, port, cwd) {
       ++port, path.join(ROOT, 'shared/wifi_setup/test'));
     await sleep(800);
     base = `http://127.0.0.1:${port}`;
-    p = await page(base, lang, buildInfo('tools/c3-programmer/firmware/c3-programmer-ota.bin', 'c3_programmer'));
+    p = await page(base, lang, buildInfo('tools/c3-programmer/firmware/c3-programmer-ota.bin', 'c3_programmer', process.env.C3_COMMIT));
     await login(p);
     await p.waitForFunction(() => document.getElementById('state').className === 'ok');
     await p.waitForFunction(() => document.querySelector('#ssid option[value="Home"]'));
