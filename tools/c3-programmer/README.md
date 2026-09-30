@@ -114,7 +114,8 @@ Wi-Fi and the setup portal are the shared component [`shared/wifi_setup`](../../
 ## Known limitations
 
 - One RFC2217 network client at a time.
-- If the laptop disappears mid-session (sleep, Wi-Fi drop), the RFC2217 library may not notice the disconnect and will not accept new connections. Fixed by restarting the C3 (BOOT 5–10 s).
+- Before 0.3.1 the first buffer purge from esptool/pyserial (`timeout while waiting for option 'purge'`) hung the connection thread, and the server then refused every new client until the C3 was restarted. Fixed in 0.3.1: flash the new `c3-programmer.bin` over USB (or `-ota.bin` through the page).
+- If the laptop disappears mid-session (sleep, Wi-Fi drop), the connection may stay open until TCP gives up, and until then new connections are not accepted. Restart the C3 (BOOT 5–10 s) if that happens.
 - The page is password-protected (default `12345678`), but the RFC2217 port itself (4000) has no password: anyone on the same network can flash or reset the WT32. Acceptable for a home bench.
 - The setup access point is open (no Wi-Fi password); the page behind it is password-protected.
 - Wi-Fi TX power is lowered to 8.5 dBm by default — the usual fix for SuperMini antenna problems. If the link is weak, change it in `menuconfig`.
