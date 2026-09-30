@@ -40,6 +40,8 @@ hardware/case/        3D-printed case: build_case.py (manifold3d CSG) -> stl/ in
                       OLED/USB-C/switch are typical values; every check in the report must be "ok"
 docs/WIRING.md        wiring diagrams (docs/wiring/gen_wiring.py -> SVG) and the first flash
 docs/ARCHITECTURE.md  decisions, stages, open questions
+docs/img/             README images: screenshots.js (Playwright against the mocks, both languages),
+                      display_sheet.py (disp_ui_test .pbm screens -> display.png); regenerate after UI changes
 ```
 
 ## Build

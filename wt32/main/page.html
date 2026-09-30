@@ -201,14 +201,13 @@ function leaseRow(l,devMac){
   const ip=document.createElement('td');ip.textContent=l.ip;
   const st=document.createElement('div');st.className='mute';
   st.textContent=l.reserved?t('page.pinned'):t('page.minutesLeft',{m:Math.max(1,Math.round(l.left/60))});ip.append(st);
-  const act=document.createElement('td');
-  const b=document.createElement('button');b.type='button';b.className='sec';b.style.margin='0';b.style.padding='6px 10px';b.style.width='auto';
+  const b=document.createElement('button');b.type='button';b.className='sec';b.style.margin='4px 0 0';b.style.padding='6px 10px';b.style.width='auto';
   b.textContent=l.reserved?t('page.unpin'):t('page.pin');
   b.onclick=async()=>{
     try{await post(l.reserved?'/api/dhcp/unreserve':'/api/dhcp/reserve',l.reserved?{mac:l.mac}:{mac:l.mac,ip:l.ip});dmsg(t(l.reserved?'page.unpinnedOk':'page.pinnedOk'));status();}
     catch(e){dmsg(e.message,true)}
   };
-  act.append(b);tr.append(who,ip,act);return tr;
+  ip.append(b);tr.append(who,ip);return tr;
 }
 const dmsg=(s,bad)=>{const m=$('dhcpMsg');m.textContent=s;m.className='msg '+(bad?'bad':'ok')};
 

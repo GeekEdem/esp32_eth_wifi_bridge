@@ -84,7 +84,7 @@ class H(http.server.BaseHTTPRequestHandler):
         if 'while true' in (sc['text'] or ''):                    # stands in for the runtime's time limit
             sc['state'] = 'error'; sc['error'] = 'timeout_error: script code ran too long'
             sc['console'].append('! ' + sc['error']); return
-        sc['state'] = 'running'; sc['error'] = ''; sc['outputs'] = [["Mode", "client"], ["Device IP", "192.168.1.50"]]
+        sc['state'] = 'running'; sc['error'] = ''; sc['outputs'] = [["Mode", "client"], ["Ethernet", "link up"], ["Device IP", "192.168.1.50"], ["Free memory", "87 KB"]]
         sc['console'].append('script started')
     def do_POST(self):
         if self.path.startswith('/api/script') and self.path.split('?')[0] == '/api/script':

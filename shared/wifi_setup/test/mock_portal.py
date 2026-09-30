@@ -7,7 +7,7 @@ PAGE = open(sys.argv[1], 'rb').read()
 AUTHJS = open(sys.argv[2], 'rb').read()
 OTAJS = open(sys.argv[2].replace('auth.js', 'ota.js'), 'rb').read()
 state = {'pw': '12345678', 'default': True, 'sessions': set(), 'fails': 0}
-STATUS = {"state":"connected","ssid":"Home","host":"wt32","apSsid":"WT32-Setup-1A2B","ap":True,"ip":"","rssi":-55,
+STATUS = {"state":"connected","ssid":"Home","host":"c3prog","apSsid":"C3prog-Setup-1A2B","ap":False,"ip":"192.168.1.60","rssi":-55,
  "version":"0.1.0","wifiUp":True,"eth":True,"devMac":"00:11:22:33:44:55","devIp":"192.168.1.50","toWifi":[10,1000],
  "toEth":[12,1400],"dropWifiDown":0,"dropEthDown":0,"txErrWifi":0,"txErrEth":0,"foreign":0,"ipv6Dropped":0,
  "dhcpRewrites":4,"mgmtIp":"192.168.1.50","mgmtPort":28480,"mgmtFrames":[3,4],"mgmtTxErr":0,"mgmtFlows":1,"mgmtEvictions":0,

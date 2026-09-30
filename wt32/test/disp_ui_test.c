@@ -92,7 +92,7 @@ int main(int argc, char **argv)
 
     ui_info_t in;
     memset(&in, 0, sizeof(in));
-    strcpy(in.version, "0.6.0");
+    strcpy(in.version, "0.7.0");
     in.heap = 91234; in.uptime_s = 93784; in.mgmt_port = 28480;
 
     /* client: connected, device known */
