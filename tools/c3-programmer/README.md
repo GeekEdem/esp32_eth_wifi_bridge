@@ -8,7 +8,7 @@ Firmware for the **ESP32-C3 SuperMini** that turns it into a programmer and seri
 - **Over USB (fallback):** C3 USB ↔ WT32 UART at a fixed 115200. The bootloader is entered with the button or from the web page.
 - **Web page** `http://c3prog.local` (English / Ukrainian): Wi-Fi selection, status, **Restart** and **Download mode** buttons for the WT32, the C3's own firmware (version, build time, commit, SHA-256) and its update.
 
-> Status: built (ESP-IDF 6.1), **not verified** on hardware.
+> Status: built (ESP-IDF 6.1). **Verified on hardware** (C3 firmware 0.3.1 and later): flashing the WT32 over Wi-Fi (`rfc2217://c3prog.local:4000`), its log over `miniterm`, `c3prog.local` over mDNS. The USB path, the BOOT button actions and the page's OTA are not verified yet.
 
 ## 1. Flash the C3 with the prebuilt binary
 

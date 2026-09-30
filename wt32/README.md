@@ -4,7 +4,7 @@
 
 Main firmware. The WT32 is connected by cable to **one** device (any device) and gives it Wi-Fi (or, in Access point mode, shares the router's network from the cable over Wi-Fi). The firmware knows nothing about the device and does not change its data — it only forwards frames.
 
-> Status: built (ESP-IDF 6.1); the forwarding, management port and script logic is tested on a PC, the page in a browser against a mock API. **Not verified** on hardware.
+> Status: built (ESP-IDF 6.1); the forwarding, management port and script logic is tested on a PC, the page in a browser against a mock API. **On hardware**: Client mode with a device — link, device MAC/IP, ping, normal use, the page on the management port (checklist items 1, 3, 4, 10); everything else is not verified yet.
 
 ## Three modes (chosen on the page, applied after a restart)
 
@@ -115,20 +115,22 @@ python -m serial.tools.miniterm --rts 0 --dtr 0 rfc2217://c3prog.local:4000 1152
 
 Any network device in **DHCP** mode (a printer is used for testing). A patch cord between the device and the WT32. "Normal use" means whatever the device is on the network for (a printer — printing from a PC, a camera — video, etc.).
 
+Result: ✅ verified on hardware, with the WT32 firmware version it was verified on; empty — not verified yet.
+
 **Client mode**
 
 | # | Action | Expected | Result |
 |---|---|---|---|
-| 1 | Turn the device on | Ethernet — link up, the device MAC appears, then its IP | |
+| 1 | Turn the device on | Ethernet — link up, the device MAC appears, then its IP | ✅ 0.7.0 |
 | 2 | Router's client list | a new client with the **WT32 station MAC** and the IP shown on the page | |
-| 3 | From a PC: `ping <IP>` | replies | |
-| 4 | Normal use of the device at `<IP>` | works | |
+| 3 | From a PC: `ping <IP>` | replies | ✅ 0.7.0 |
+| 4 | Normal use of the device at `<IP>` | works | ✅ 0.7.0 |
 | 5 | Longer transfer (large file, several jobs in a row) | works without interruptions | |
 | 6 | Vendor utility → search for the device on the network | finds it / doesn't (write down) | |
 | 7 | Turn the device off and on | same IP, normal use works | |
 | 8 | Restart the WT32 (device stays on) | connection comes back without restarting the device | |
 | 9 | Restart the router | connection comes back by itself | |
-| 10 | From a PC open `http://<IP>:28480`, log in | WT32 page; the **WT32 management traffic** counter grows; the `WT32-Setup` access point is gone | |
+| 10 | From a PC open `http://<IP>:28480`, log in | WT32 page; the **WT32 management traffic** counter grows; the `WT32-Setup` access point is gone | ✅ 0.7.1 |
 | 11 | Use the device (item 4) with the page from item 10 open | works, the page keeps updating | |
 | 12 | If the device has a web page: `http://<IP>` | the **device's** page opens, not the WT32's | |
 | 13 | Change the page password, log out, log in with the new one | works; the old password is rejected | |

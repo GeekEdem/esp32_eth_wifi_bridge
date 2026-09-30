@@ -4,7 +4,7 @@
 
 Firmware for the **WT32-ETH01** (ESP32 + LAN8720) that gives Wi-Fi to a device with only an Ethernet port (a printer, a controller, a NAS, a camera, …), or shares the network on its cable over Wi-Fi. The firmware knows nothing about the device and never changes its data: it only forwards frames.
 
-> **Status:** everything builds (ESP-IDF 6.1) and passes the tests on a PC: frame handling and DHCP in C with sanitizers, the web pages in a browser against a mock of the device API. **It has not been verified on hardware yet**; the hardware checklist is in [`wt32/README.md`](wt32/README.md#3-checklist-with-a-device).
+> **Status:** everything builds (ESP-IDF 6.1) and passes the tests on a PC: frame handling and DHCP in C with sanitizers, the web pages in a browser against a mock of the device API. **On hardware** so far: the C3 programmer (flashing and the log over Wi-Fi) and the Client mode basics — the device on the network, ping, normal use, the WT32 page on the management port. The rest is not verified yet; the checklist with results is in [`wt32/README.md`](wt32/README.md#3-checklist-with-a-device).
 
 <p>
 <img src="docs/img/client_en.png" width="260" alt="Client mode status">
