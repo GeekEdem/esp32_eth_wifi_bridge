@@ -1,11 +1,15 @@
 # Mock of the WT32 web API (setup_portal core + web.c): login, status per
 # mode (client / own = router / ap = access point), /api/mode, /api/own, /api/wifi. "Restart" applies the saved mode.
-import http.server, json, secrets, struct, time, urllib.parse, sys
+import http.server, json, os, secrets, struct, time, urllib.parse, sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(sys.argv[2])), 'test'))
+import mock_i18n
+HERE = os.path.dirname(os.path.abspath(__file__))
+L = mock_i18n.Langs([os.path.join(HERE, '..', 'main', 'i18n'), os.path.join(HERE, '..', '..', 'shared', 'script_berry', 'i18n')])
 PAGE = open(sys.argv[1], 'rb').read()
 AUTHJS = open(sys.argv[2], 'rb').read()
 OTAJS = open(sys.argv[2].replace('auth.js', 'ota.js'), 'rb').read()
 SCRIPTJS = open(sys.argv[2].replace('wifi_setup/auth.js', 'script_berry/script.js'), 'rb').read()
-EXAMPLE = "# Приклад\nprint('hi')\n"
+EXAMPLE = "# Example\nprint('hi')\n"
 st = {'pw': '12345678', 'sessions': set(), 'mode': 'client', 'saved_mode': 'client', 'log': [],
       'dhcp': [{"mac": "00:11:22:33:44:55", "ip": "192.168.77.100", "reserved": False, "left": 5400, "host": "GS-2406T"},
                {"mac": "AA:BB:CC:00:00:01", "ip": "192.168.77.101", "reserved": False, "left": 7000, "host": "phone"}],
@@ -39,6 +43,7 @@ class H(http.server.BaseHTTPRequestHandler):
         if self.path == '/auth.js': return self.send(200, AUTHJS, 'application/javascript')
         if self.path == '/ota.js': return self.send(200, OTAJS, 'application/javascript')
         if self.path == '/script.js': return self.send(200, SCRIPTJS, 'application/javascript')
+        if self.path.startswith('/i18n.json'): return self.send(200, L.response(self.path))
         if self.path == '/_restart':                       # test hook: apply saved mode
             st['mode'] = st['saved_mode']; return self.send(200, {"ok": True})
         if self.path == '/_fallback':                      # test hook: no DHCP on the cable
@@ -48,7 +53,7 @@ class H(http.server.BaseHTTPRequestHandler):
         if self.path == '/_rollback': st['ota']['rollback'] = True; return self.send(200, {"ok": True})
         if time.time() < st['ota']['down_until']:                # "restarting"
             self.close_connection = True; return self.send(503, b'', 'text/plain')
-        if self.sid() not in st['sessions']: return self.send(401, {"ok":False,"auth":False})
+        if self.sid() not in st['sessions']: return self.send(401, L.err('err.loginRequired', auth=False))
         if self.path == '/api/status':
             o = st['own']
             if st['mode'] == 'own': base = dict(OWN, ownIp=o['ip'], dhcp=st['dhcp'])
@@ -57,7 +62,7 @@ class H(http.server.BaseHTTPRequestHandler):
                 if st.get('uplink') == 'fallback': base.update(uplink='fallback', apIp=o['ip'], gw='')
             else: base = dict(CLIENT)
             o2 = st['ota']
-            base.update(version=o2['version'], ota={"supported": True, "running": o2['running'],
+            base.update(version=o2['version'], build=dict(mock_i18n.BUILD, project='wt32_bridge', version=o2['version']), ota={"supported": True, "running": o2['running'],
                         "maxSize": 0x1E0000, "probation": False})
             if st.get('setup_boot'): base['setupBoot'] = True
             base.update(mode=st['mode'], defaultPassword=True,
@@ -79,20 +84,20 @@ class H(http.server.BaseHTTPRequestHandler):
         if 'while true' in (sc['text'] or ''):                    # stands in for the runtime's time limit
             sc['state'] = 'error'; sc['error'] = 'timeout_error: script code ran too long'
             sc['console'].append('! ' + sc['error']); return
-        sc['state'] = 'running'; sc['error'] = ''; sc['outputs'] = [["Режим", "клієнт"], ["IP пристрою", "192.168.1.50"]]
-        sc['console'].append('скрипт запущено')
+        sc['state'] = 'running'; sc['error'] = ''; sc['outputs'] = [["Mode", "client"], ["Device IP", "192.168.1.50"]]
+        sc['console'].append('script started')
     def do_POST(self):
         if self.path.startswith('/api/script') and self.path.split('?')[0] == '/api/script':
             n = int(self.headers.get('Content-Length') or 0); body = self.rfile.read(n).decode()
-            if self.sid() not in st['sessions']: return self.send(401, {"ok":False})
+            if self.sid() not in st['sessions']: return self.send(401, L.err('err.loginRequired', auth=False))
             st['script']['text'] = body; st['script']['state'] = 'stopped'
             if 'run=1' in self.path: self.script_run()
             return self.send(200, {"ok": True})
         if self.path == '/api/ota':                                # mirrors portal_ota.c checks
             n = int(self.headers.get('Content-Length') or 0); body = self.rfile.read(n)
-            if self.sid() not in st['sessions']: return self.send(401, {"ok":False})
+            if self.sid() not in st['sessions']: return self.send(401, L.err('err.loginRequired', auth=False))
             if len(body) < 288 or body[0] != 0xE9 or struct.unpack_from('<I', body, 32)[0] != 0xABCD5432:
-                return self.send(400, {"ok":False,"message":"Це не файл оновлення. Потрібен образ «…-ota.bin»"})
+                return self.send(400, L.err('err.thisIsNotAnUpdate'))
             ver = body[48:80].split(b'\0')[0].decode()
             o = st['ota']; o['down_until'] = time.time() + 3
             if not o['rollback']:
@@ -101,29 +106,29 @@ class H(http.server.BaseHTTPRequestHandler):
             return self.send(200, {"ok":True,"version":ver})
         f = self.form()
         if self.path == '/api/login':
-            if f.get('password') != st['pw']: return self.send(401, {"ok":False,"message":"Невірний пароль"})
+            if f.get('password') != st['pw']: return self.send(401, L.err('err.wrongPassword'))
             s = secrets.token_hex(16); st['sessions'].add(s)
             return self.send(200, {"ok":True,"defaultPassword":True}, hdrs=[('Set-Cookie', f'sid={s}; Path=/')])
-        if self.sid() not in st['sessions']: return self.send(401, {"ok":False,"auth":False})
+        if self.sid() not in st['sessions']: return self.send(401, L.err('err.loginRequired', auth=False))
         st['log'].append([self.path, f])
         if self.path == '/api/own':
             p = f.get('pass') or st['own']['pass']
-            if not (8 <= len(p) <= 63): return self.send(400, {"ok":False,"message":"Пароль мережі має бути 8–63 символи"})
+            if not (8 <= len(p) <= 63): return self.send(400, L.err('err.theNetworkPasswordMustBe'))
             st['own'].update({'ssid': f['ssid'], 'pass': p, 'channel': int(f['channel']), 'ip': f['ip']})
             return self.send(200, {"ok":True})
         if self.path == '/api/mode':
-            if f['mode'] not in ('client', 'own', 'ap'): return self.send(400, {"ok":False,"message":"Невідомий режим"})
+            if f['mode'] not in ('client', 'own', 'ap'): return self.send(400, L.err('err.unknownMode'))
             if f['mode'] != 'client' and len(st['own']['pass']) < 8:
-                return self.send(400, {"ok":False,"message":"Спершу збережіть налаштування мережі WT32"})
+                return self.send(400, L.err('err.saveTheWt32NetworkSettings'))
             st['saved_mode'] = f['mode']; return self.send(200, {"ok":True})
         if self.path == '/api/wifi': st['wifi']['ssid'] = f['ssid']; return self.send(200, {"ok":True})
         if self.path in ('/api/dhcp/reserve', '/api/dhcp/unreserve'):
-            if st['mode'] != 'own': return self.send(400, {"ok": False, "message": "Закріплення адрес — лише в режимі «Роутер»"})
+            if st['mode'] != 'own': return self.send(400, L.err('err.addressPinningWorksInRouter'))
             m = f.get('mac', '').upper(); hit = [l for l in st['dhcp'] if l['mac'] == m]
             if self.path.endswith('/unreserve'):
-                if not hit or not hit[0]['reserved']: return self.send(400, {"ok": False, "message": "Для цього пристрою адресу не закріплено"})
+                if not hit or not hit[0]['reserved']: return self.send(400, L.err('err.noAddressIsPinnedFor'))
                 hit[0]['reserved'] = False; return self.send(200, {"ok": True})
-            if not f.get('ip', '').startswith('192.168.77.'): return self.send(400, {"ok": False, "message": "Адреса поза мережею WT32"})
+            if not f.get('ip', '').startswith('192.168.77.'): return self.send(400, L.err('err.theAddressIsOutsideThe'))
             if hit: hit[0].update(reserved=True, ip=f['ip'])
             else: st['dhcp'].append({"mac": m, "ip": f['ip'], "reserved": True, "left": -1, "host": ""})
             return self.send(200, {"ok": True})

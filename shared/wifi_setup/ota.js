@@ -1,11 +1,19 @@
-/* Firmware update section for the setup portal pages.
- * Renders into <section id="ota"> if the page has one. Load after auth.js
- * (uses the wrapped fetch for status polling; the upload itself is an XHR
- * for progress). Uses the page's CSS classes. */
+/* Firmware section for the setup portal pages: which firmware runs (version,
+ * build date, source commit, SHA-256, ESP-IDF) and the update. Renders into
+ * <section id="ota"> if the page has one. Load after auth.js (uses the wrapped
+ * fetch and I18N; the upload itself is an XHR for progress). Texts: ota.* and
+ * fw.* in the i18n files. Uses the page's CSS classes. */
 (() => {
+  const t = (k, p) => I18N.t(k, p);
   function el(tag, props, ...kids) {
     const e = Object.assign(document.createElement(tag), props || {});
     e.append(...kids);
+    return e;
+  }
+  function tx(tag, key, props) {
+    const e = el(tag, props);
+    e.dataset.i18n = key;
+    e.textContent = t(key);
     return e;
   }
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -17,35 +25,46 @@
   }
 
   function render(sec) {
-    const info = el('div', { className: 'mute' });
+    const info = el('table');
+    const note = el('div', { className: 'mute', style: 'margin-top:8px' });
     const file = el('input', { type: 'file', accept: '.bin' });
     const bar = el('progress', { max: 100, value: 0, hidden: true, style: 'width:100%;margin-top:12px' });
-    const btn = el('button', { type: 'button', textContent: 'Оновити прошивку' });
+    const btn = tx('button', 'ota.update', { type: 'button' });
     const msg = el('div', { style: 'min-height:1.4em;margin-top:12px' });
-    const say = (t, cls) => { msg.textContent = t; msg.className = cls || ''; };
+    const say = (s, cls) => { msg.textContent = s; msg.className = cls || ''; };
     let before = null;
 
-    sec.append(el('h2', { textContent: 'Оновлення прошивки' }), info,
-      el('label', { textContent: 'Файл «…-ota.bin»' }), file, bar, btn, msg);
+    sec.append(tx('h2', 'ota.title'), info, note, tx('label', 'ota.file'), file, bar, btn, msg);
 
-    status().then(s => {
-      before = s;
+    function row(key, value) {
+      const code = el('code', { textContent: value || '—' });
+      info.append(el('tr', {}, tx('td', key), el('td', {}, code)));
+    }
+    function showInfo(s) {
+      info.textContent = '';
+      const b = s.build || {};
+      row('fw.version', b.version || s.version);
+      row('fw.built', [b.date, b.time].filter(Boolean).join(' '));
+      row('fw.commit', b.commit);
+      row('fw.elf', b.elf);
+      row('fw.idf', b.idf);
       if (!s.ota || !s.ota.supported) {
-        info.textContent = 'Ця прошивка не підтримує оновлення через сторінку — прошийте кабелем.';
+        note.textContent = t('ota.unsupported');
         btn.disabled = file.disabled = true;
         return;
       }
-      info.textContent = `Зараз: версія ${s.version}, розділ ${s.ota.running}` +
-        (s.ota.probation ? ' (нова прошивка на перевірці — не вимикайте хвилину)' : '');
-    }).catch(() => {});
+      note.textContent = t('ota.partition', { p: s.ota.running }) + (s.ota.probation ? ' ' + t('ota.probation') : '');
+    }
+    status().then(s => { before = s; showInfo(s); }).catch(() => {});
+    I18N.onChange(() => { if (before) showInfo(before); });
 
     btn.onclick = () => {
       const f = file.files[0];
-      if (!f) return say('Оберіть файл', 'bad');
-      if (before && before.ota && f.size > before.ota.maxSize) return say('Файл завеликий для розділу', 'bad');
+      if (!f) return say(t('ota.choose'), 'bad');
+      if (before && before.ota && f.size > before.ota.maxSize) return say(t('ota.tooBig'), 'bad');
       btn.disabled = file.disabled = true;
       bar.hidden = false; bar.value = 0;
-      say('Завантаження…');
+      say(t('ota.uploading'));
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/api/ota');
       xhr.setRequestHeader('Content-Type', 'application/octet-stream');
@@ -53,12 +72,12 @@
       xhr.onload = async () => {
         let j = {};
         try { j = JSON.parse(xhr.responseText); } catch (e) {}
-        if (xhr.status === 401) { say('Сесія закінчилась — оновіть сторінку й увійдіть знову', 'bad'); btn.disabled = file.disabled = false; return; }
-        if (!j.ok) { say(j.message || 'Помилка оновлення', 'bad'); btn.disabled = file.disabled = false; bar.hidden = true; return; }
-        say(`Записано версію ${j.version}. Перезапуск…`);
+        if (xhr.status === 401) { say(t('ota.session'), 'bad'); btn.disabled = file.disabled = false; return; }
+        if (!j.ok) { say(j.key || j.message ? I18N.msg(j) : t('ota.failed'), 'bad'); btn.disabled = file.disabled = false; bar.hidden = true; return; }
+        say(t('ota.written', { v: j.version }));
         await waitBack(j.version, before && before.ota.running);
       };
-      xhr.onerror = () => { say('Звʼязок перервано під час завантаження', 'bad'); btn.disabled = file.disabled = false; };
+      xhr.onerror = () => { say(t('ota.lost'), 'bad'); btn.disabled = file.disabled = false; };
       xhr.send(f);
     };
 
@@ -68,22 +87,22 @@
         try {
           const s = await status();
           if (s.ota.running !== prevPart) {       /* booted from the other slot */
-            say(`Оновлено до версії ${s.version}. Вона стане постійною через хвилину роботи.`, 'ok');
-            before = s;
+            say(t('ota.done', { v: s.version }), 'ok');
           } else {
-            say(`WT32 працює з версією ${s.version}: нова не запустилась, повернуто попередню.`, 'bad');
+            say(t('ota.rolledBack', { v: s.version }), 'bad');
           }
-          info.textContent = `Зараз: версія ${s.version}, розділ ${s.ota.running}`;
+          before = s;
+          showInfo(s);
           btn.disabled = file.disabled = false; bar.hidden = true;
           return;
         } catch (e) { await sleep(2000); }
       }
-      say('Пристрій не відповідає. Перевірте, чи змінилась його адреса, і відкрийте сторінку знову.', 'bad');
+      say(t('ota.gone'), 'bad');
     }
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     const sec = document.getElementById('ota');
-    if (sec) render(sec);
+    if (sec) I18N.ready.then(() => render(sec));
   });
 })();

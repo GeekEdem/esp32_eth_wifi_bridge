@@ -55,23 +55,23 @@ size_t portal_ota_status(char *buf, size_t pos, size_t cap)
                                 next ? (unsigned long)next->size : 0UL, s_pending_verify ? "true" : "false");
 }
 
-/* Why the first bytes are not an update for this device, or NULL if fine. */
-static const char *check_header(const uint8_t *buf)
+/* Why the first bytes are not an update for this device (key NULL if fine). */
+static portal_msg_t check_header(const uint8_t *buf)
 {
     const esp_image_header_t *hdr = (const esp_image_header_t *)buf;
     const esp_app_desc_t *desc =
         (const esp_app_desc_t *)(buf + sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t));
     if (hdr->magic != ESP_IMAGE_HEADER_MAGIC || desc->magic_word != ESP_APP_DESC_MAGIC_WORD) {
-        return "Це не файл оновлення. Потрібен образ «…-ota.bin» (повний образ для адреси 0x0 — лише для прошивки кабелем).";
+        return PORTAL_MSG("err.thisIsNotAnUpdate", "This is not an update file. Use the \"…-ota.bin\" image (the full image for address 0x0 is for flashing over a cable only).");
     }
     if (hdr->chip_id != CONFIG_IDF_FIRMWARE_CHIP_ID) {
-        return "Образ для іншого чипа";
+        return PORTAL_MSG("err.theImageIsForA", "The image is for a different chip");
     }
     const esp_app_desc_t *running = esp_app_get_description();
     if (strncmp(desc->project_name, running->project_name, sizeof(desc->project_name)) != 0) {
-        return "Образ іншої прошивки (не для цього пристрою)";
+        return PORTAL_MSG("err.theImageIsADifferent", "The image is a different firmware (not for this device)");
     }
-    return NULL;
+    return (portal_msg_t){ 0 };
 }
 
 /* Fill buf with up to len bytes; returns bytes read or -1. */
@@ -89,28 +89,28 @@ static int recv_some(httpd_req_t *req, uint8_t *buf, size_t len)
     return -1;
 }
 
-static esp_err_t ota_fail(httpd_req_t *req, esp_ota_handle_t h, uint8_t *buf, const char *message)
+static esp_err_t ota_fail(httpd_req_t *req, esp_ota_handle_t h, uint8_t *buf, portal_msg_t message)
 {
     if (h) {
         esp_ota_abort(h);
     }
     free(buf);
     s_busy = false;
-    ESP_LOGW(TAG, "update rejected: %s", message);
-    return setup_portal_send_error(req, message);
+    ESP_LOGW(TAG, "update rejected: %s", message.en);
+    return setup_portal_send_msg(req, message);
 }
 
 esp_err_t portal_ota_post(httpd_req_t *req)
 {
     const esp_partition_t *part = esp_ota_get_next_update_partition(NULL);
     if (!part) {
-        return setup_portal_send_error(req, "Ця прошивка без розмітки для оновлень — прошийте кабелем");
+        return setup_portal_send_error_key(req, "err.thisFirmwareHasNoUpdate", "This firmware has no update partitions: flash it over a cable");
     }
     if (req->content_len < HEADER_LEN || req->content_len > part->size) {
-        return setup_portal_send_error(req, "Розмір файлу не підходить для оновлення");
+        return setup_portal_send_error_key(req, "err.theFileSizeDoesNot", "The file size does not fit an update");
     }
     if (s_busy) {
-        return setup_portal_send_error(req, "Оновлення вже триває");
+        return setup_portal_send_error_key(req, "err.anUpdateIsAlreadyIn", "An update is already in progress");
     }
     s_busy = true;
 
@@ -126,12 +126,12 @@ esp_err_t portal_ota_post(httpd_req_t *req)
     while (have < HEADER_LEN) {
         int r = recv_some(req, buf + have, CHUNK - have);
         if (r < 0) {
-            return ota_fail(req, 0, buf, "Передачу перервано");
+            return ota_fail(req, 0, buf, PORTAL_MSG("err.theTransferWasInterrupted", "The transfer was interrupted"));
         }
         have += r;
     }
-    const char *why = check_header(buf);
-    if (why) {
+    portal_msg_t why = check_header(buf);
+    if (why.key) {
         return ota_fail(req, 0, buf, why);
     }
     char version[33];
@@ -140,11 +140,11 @@ esp_err_t portal_ota_post(httpd_req_t *req)
 
     ESP_LOGI(TAG, "writing %u bytes, version %s, to %s", (unsigned)total, version, part->label);
     if (esp_ota_begin(part, OTA_WITH_SEQUENTIAL_WRITES, &h) != ESP_OK) {
-        return ota_fail(req, 0, buf, "Не вдалося почати запис");
+        return ota_fail(req, 0, buf, PORTAL_MSG("err.couldNotStartWriting", "Could not start writing"));
     }
     while (true) {
         if (esp_ota_write(h, buf, have) != ESP_OK) {
-            return ota_fail(req, h, buf, "Помилка запису у флеш");
+            return ota_fail(req, h, buf, PORTAL_MSG("err.flashWriteError", "Flash write error"));
         }
         done += have;
         if (done >= total) {
@@ -153,7 +153,7 @@ esp_err_t portal_ota_post(httpd_req_t *req)
         size_t want = total - done < CHUNK ? total - done : CHUNK;
         int r = recv_some(req, buf, want);
         if (r < 0) {
-            return ota_fail(req, h, buf, "Передачу перервано");
+            return ota_fail(req, h, buf, PORTAL_MSG("err.theTransferWasInterrupted", "The transfer was interrupted"));
         }
         have = r;
     }
@@ -162,13 +162,13 @@ esp_err_t portal_ota_post(httpd_req_t *req)
     esp_err_t err = esp_ota_end(h);
     if (err != ESP_OK) {
         s_busy = false;
-        return setup_portal_send_error(req, err == ESP_ERR_OTA_VALIDATE_FAILED
-                                            ? "Образ пошкоджений (не пройшов перевірку)"
-                                            : "Не вдалося завершити запис");
+        return setup_portal_send_msg(req, err == ESP_ERR_OTA_VALIDATE_FAILED
+                                            ? PORTAL_MSG("err.theImageIsCorruptedVerification", "The image is corrupted (verification failed)")
+                                            : PORTAL_MSG("err.couldNotFinishWriting", "Could not finish writing"));
     }
     if (esp_ota_set_boot_partition(part) != ESP_OK) {
         s_busy = false;
-        return setup_portal_send_error(req, "Не вдалося вибрати нову прошивку для старту");
+        return setup_portal_send_error_key(req, "err.couldNotSelectTheNew", "Could not select the new firmware to boot");
     }
     ESP_LOGI(TAG, "update to %s written, restarting", version);
 

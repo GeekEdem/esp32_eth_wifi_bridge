@@ -109,7 +109,7 @@ static esp_err_t mode_post(httpd_req_t *req)
     if (setup_portal_read_form(req, form, sizeof(form)) != ESP_OK ||
         setup_portal_form_value(form, "mode", mode, sizeof(mode)) != ESP_OK ||
         setup_portal_form_value(form, "restart", restart, sizeof(restart)) != ESP_OK) {
-        return setup_portal_send_error(req, "Пошкоджений запит");
+        return setup_portal_send_error_key(req, "err.malformedRequest", "Malformed request");
     }
     wt32_mode_t m;
     if (strcmp(mode, "client") == 0) {
@@ -118,14 +118,14 @@ static esp_err_t mode_post(httpd_req_t *req)
         wt32_settings_t cur;
         settings_load(&cur);
         if (!settings_own_valid(&cur)) {
-            return setup_portal_send_error(req, "Спершу збережіть налаштування мережі WT32 (пароль 8–63 символи)");
+            return setup_portal_send_error_key(req, "err.saveTheWt32NetworkSettings", "Save the WT32 network settings first (password of 8–63 characters)");
         }
         m = mode[0] == 'o' ? WT32_MODE_OWN : WT32_MODE_AP;
     } else {
-        return setup_portal_send_error(req, "Невідомий режим");
+        return setup_portal_send_error_key(req, "err.unknownMode", "Unknown mode");
     }
     if (settings_save_mode(m) != ESP_OK) {
-        return setup_portal_send_error(req, "Не вдалося зберегти режим");
+        return setup_portal_send_error_key(req, "err.couldNotSaveTheMode", "Could not save the mode");
     }
     if (strcmp(restart, "0") != 0) {
         setup_portal_restart_later();
@@ -141,7 +141,7 @@ static esp_err_t own_post(httpd_req_t *req)
         setup_portal_form_value(form, "pass", pass, sizeof(pass)) != ESP_OK ||
         setup_portal_form_value(form, "channel", ch, sizeof(ch)) != ESP_OK ||
         setup_portal_form_value(form, "ip", ip, sizeof(ip)) != ESP_OK) {
-        return setup_portal_send_error(req, "Задовгі або пошкоджені дані форми");
+        return setup_portal_send_error_key(req, "err.formDataTooLongOr", "Form data too long or malformed");
     }
     wt32_settings_t cur;
     settings_load(&cur);
@@ -151,19 +151,19 @@ static esp_err_t own_post(httpd_req_t *req)
     int channel = atoi(ch);
     size_t plen = strlen(pass);
     if (!ssid[0]) {
-        return setup_portal_send_error(req, "Вкажіть назву мережі");
+        return setup_portal_send_error_key(req, "err.enterTheNetworkName", "Enter the network name");
     }
     if (plen < 8 || plen > 63) {
-        return setup_portal_send_error(req, "Пароль мережі має бути 8–63 символи");
+        return setup_portal_send_error_key(req, "err.theNetworkPasswordMustBe", "The network password must be 8–63 characters");
     }
     if (channel < 1 || channel > 13) {
-        return setup_portal_send_error(req, "Канал — від 1 до 13");
+        return setup_portal_send_error_key(req, "err.channel1To13", "Channel: 1 to 13");
     }
     if (!settings_ip_ok(ip)) {
-        return setup_portal_send_error(req, "Адреса WT32: IPv4, остання цифра 1–99 (.100–.200 — пул DHCP)");
+        return setup_portal_send_error_key(req, "err.wt32AddressIpv4EndingIn", "WT32 address: IPv4 ending in 1–99 (.100–.200 is the DHCP pool)");
     }
     if (settings_save_own(ssid, pass, channel, ip) != ESP_OK) {
-        return setup_portal_send_error(req, "Не вдалося зберегти");
+        return setup_portal_send_error_key(req, "err.couldNotSave", "Could not save");
     }
     settings_load(&s_set);
     memset(pass, 0, sizeof(pass));
@@ -190,7 +190,7 @@ static bool parse_mac(const char *s, uint8_t mac[6])
 static esp_err_t reserve_post(httpd_req_t *req)
 {
     if (s_set.mode != WT32_MODE_OWN) {
-        return setup_portal_send_error(req, "Закріплення адрес — лише в режимі «Роутер»");
+        return setup_portal_send_error_key(req, "err.addressPinningWorksInRouter", "Address pinning works in Router mode only");
     }
     char form[96], mac_s[24], ip_s[16];
     uint8_t mac[6];
@@ -199,10 +199,10 @@ static esp_err_t reserve_post(httpd_req_t *req)
         setup_portal_form_value(form, "mac", mac_s, sizeof(mac_s)) != ESP_OK ||
         setup_portal_form_value(form, "ip", ip_s, sizeof(ip_s)) != ESP_OK ||
         !parse_mac(mac_s, mac) || !ip4addr_aton(ip_s, &ip)) {
-        return setup_portal_send_error(req, "Невірна MAC або IP-адреса");
+        return setup_portal_send_error_key(req, "err.invalidMacOrIpAddress", "Invalid MAC or IP address");
     }
     if (!dhcp_server_reserve(mac, ip.addr)) {
-        return setup_portal_send_error(req, "Адреса поза мережею WT32, це адреса самого WT32 або вже закріплена за іншим пристроєм");
+        return setup_portal_send_error_key(req, "err.theAddressIsOutsideThe", "The address is outside the WT32 network, is the WT32's own, or is pinned to another device");
     }
     return setup_portal_send_json(req, "{\"ok\":true}");
 }
@@ -214,10 +214,10 @@ static esp_err_t unreserve_post(httpd_req_t *req)
     if (s_set.mode != WT32_MODE_OWN ||
         setup_portal_read_form(req, form, sizeof(form)) != ESP_OK ||
         setup_portal_form_value(form, "mac", mac_s, sizeof(mac_s)) != ESP_OK || !parse_mac(mac_s, mac)) {
-        return setup_portal_send_error(req, "Невірний запит");
+        return setup_portal_send_error_key(req, "err.invalidRequest", "Invalid request");
     }
     if (!dhcp_server_unreserve(mac)) {
-        return setup_portal_send_error(req, "Для цього пристрою адресу не закріплено");
+        return setup_portal_send_error_key(req, "err.noAddressIsPinnedFor", "No address is pinned for this device");
     }
     return setup_portal_send_json(req, "{\"ok\":true}");
 }
@@ -239,6 +239,8 @@ esp_err_t web_start(const wt32_settings_t *s, bool setup_boot)
         .page_len = page_end - page_start - 1,   /* EMBED_TXTFILES adds a NUL */
         .status_extra = web_status_extra,
         .ota = true,
+        .langs = portal_langs,
+        .lang_count = portal_lang_count,
         .lan_port = s->mode == WT32_MODE_CLIENT ? CONFIG_WT32_MGMT_PORT : 0,
     };
     esp_err_t err = setup_portal_start(&cfg);

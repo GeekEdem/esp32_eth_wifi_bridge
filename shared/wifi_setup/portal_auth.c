@@ -220,7 +220,7 @@ bool portal_auth_session_valid(httpd_req_t *req)
 esp_err_t portal_auth_reject(httpd_req_t *req)
 {
     httpd_resp_set_status(req, "401 Unauthorized");
-    return setup_portal_send_json(req, "{\"ok\":false,\"auth\":false,\"message\":\"Потрібен вхід\"}");
+    return setup_portal_send_json(req, "{\"ok\":false,\"auth\":false,\"key\":\"err.loginRequired\",\"message\":\"Login required\"}");
 }
 
 /* ---------- handlers ---------- */
@@ -230,14 +230,14 @@ esp_err_t portal_auth_login_post(httpd_req_t *req)
     char form[128], pw[PW_MAX + 1];
     if (setup_portal_read_form(req, form, sizeof(form)) != ESP_OK ||
         setup_portal_form_value(form, "password", pw, sizeof(pw)) != ESP_OK) {
-        return setup_portal_send_error(req, "Пошкоджений запит");
+        return setup_portal_send_error_key(req, "err.malformedRequest", "Malformed request");
     }
     int64_t now = esp_timer_get_time();
     xSemaphoreTake(s_lock, portMAX_DELAY);
     if (now < s_locked_until_us) {
         xSemaphoreGive(s_lock);
         memset(pw, 0, sizeof(pw));
-        return setup_portal_send_error(req, "Забагато спроб. Зачекайте 30 секунд.");
+        return setup_portal_send_error_key(req, "err.tooManyAttemptsWait30", "Too many attempts. Wait 30 seconds.");
     }
     bool ok = password_ok(pw);
     memset(pw, 0, sizeof(pw));
@@ -250,7 +250,7 @@ esp_err_t portal_auth_login_post(httpd_req_t *req)
         xSemaphoreGive(s_lock);
         ESP_LOGW(TAG, "wrong password");
         httpd_resp_set_status(req, "401 Unauthorized");
-        return setup_portal_send_json(req, "{\"ok\":false,\"auth\":false,\"message\":\"Невірний пароль\"}");
+        return setup_portal_send_json(req, "{\"ok\":false,\"auth\":false,\"key\":\"err.wrongPassword\",\"message\":\"Wrong password\"}");
     }
     s_fails = 0;
     session_t *s = session_new(now);
@@ -284,19 +284,19 @@ esp_err_t portal_auth_password_post(httpd_req_t *req)
     if (setup_portal_read_form(req, form, sizeof(form)) != ESP_OK ||
         setup_portal_form_value(form, "old", old_pw, sizeof(old_pw)) != ESP_OK ||
         setup_portal_form_value(form, "new", new_pw, sizeof(new_pw)) != ESP_OK) {
-        return setup_portal_send_error(req, "Задовгий пароль або пошкоджений запит");
+        return setup_portal_send_error_key(req, "err.passwordTooLongOrMalformed", "Password too long or malformed request");
     }
-    const char *message = NULL;
+    portal_msg_t message = { 0 };
     size_t n = strlen(new_pw);
     xSemaphoreTake(s_lock, portMAX_DELAY);
     if (!password_ok(old_pw)) {
-        message = "Поточний пароль невірний";
+        message = PORTAL_MSG("err.theCurrentPasswordIsWrong", "The current password is wrong");
     } else if (n < PW_MIN || n > PW_MAX) {
-        message = "Новий пароль має бути 8–63 символи";
+        message = PORTAL_MSG("err.theNewPasswordMustBe", "The new password must be 8–63 characters");
     } else if (strcmp(new_pw, PORTAL_DEFAULT_PASSWORD) == 0) {
-        message = "Оберіть пароль, відмінний від стандартного";
+        message = PORTAL_MSG("err.chooseAPasswordOtherThan", "Choose a password other than the default one");
     } else if (store_password(new_pw) != ESP_OK) {
-        message = "Не вдалося зберегти пароль";
+        message = PORTAL_MSG("err.couldNotSaveThePassword", "Could not save the password");
     } else {
         /* Everyone else logs in again; this session stays. */
         char sid[40] = "";
@@ -311,8 +311,8 @@ esp_err_t portal_auth_password_post(httpd_req_t *req)
     memset(old_pw, 0, sizeof(old_pw));
     memset(new_pw, 0, sizeof(new_pw));
     memset(form, 0, sizeof(form));
-    if (message) {
-        return setup_portal_send_error(req, message);
+    if (message.key) {
+        return setup_portal_send_msg(req, message);
     }
     ESP_LOGI(TAG, "web password changed");
     return setup_portal_send_json(req, "{\"ok\":true}");

@@ -110,18 +110,18 @@ int main(int argc, char **argv)
     /* 1. example script: outputs from status(), every(5000) re-runs */
     bvm *vm = new_vm(prelude);
     assert(load_run(vm, "script", example) || (fprintf(stderr, "example: %s\n", err), 0));
-    assert(strstr(console, "скрипт запущено"));
-    assert(out("Режим") && !strcmp(out("Режим"), "клієнт"));
-    assert(!strcmp(out("IP пристрою"), "192.168.1.50"));
-    assert(!strcmp(out("Вільна памʼять"), "117 КБ"));
+    assert(strstr(console, "script started"));
+    assert(out("Mode") && !strcmp(out("Mode"), "client"));
+    assert(!strcmp(out("Device IP"), "192.168.1.50"));
+    assert(!strcmp(out("Free memory"), "117 KB"));
     assert(run_timers(vm) == 5000);
     status_json = "{\"mode\":\"own\",\"eth\":false,\"devIp\":\"\",\"devMac\":\"\"}";
-    fake_ms = 4999; assert(run_timers(vm) == 1); assert(!strcmp(out("Режим"), "клієнт"));
+    fake_ms = 4999; assert(run_timers(vm) == 1); assert(!strcmp(out("Mode"), "client"));
     fake_ms = 5000; assert(run_timers(vm) == 5000);
-    assert(!strcmp(out("Режим"), "роутер") && !strcmp(out("Ethernet"), "немає") && !strcmp(out("IP пристрою"), "—"));
+    assert(!strcmp(out("Mode"), "router") && !strcmp(out("Ethernet"), "no link") && !strcmp(out("Device IP"), "-"));
     status_json = "{\"mode\":\"ap\",\"eth\":true,\"devIp\":\"\",\"devMac\":\"\"}";
     fake_ms = 10000; assert(run_timers(vm) == 5000);
-    assert(!strcmp(out("Режим"), "точка доступу") && !strcmp(out("Ethernet"), "є лінк"));
+    assert(!strcmp(out("Mode"), "access point") && !strcmp(out("Ethernet"), "link up"));
     be_vm_delete(vm);
     assert(mem_used == 0);
 

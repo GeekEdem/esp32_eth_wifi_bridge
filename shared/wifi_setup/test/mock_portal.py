@@ -1,5 +1,8 @@
-# Mock of the portal API (behaviour mirrors setup_portal.c / portal_auth.c)
+# Mock of the portal API (behaviour mirrors setup_portal.c / portal_auth.c).
+# Args: page.html auth.js port [i18n dir of the app...]
 import http.server, json, secrets, urllib.parse, sys
+import mock_i18n
+L = mock_i18n.Langs(sys.argv[4:])
 PAGE = open(sys.argv[1], 'rb').read()
 AUTHJS = open(sys.argv[2], 'rb').read()
 OTAJS = open(sys.argv[2].replace('auth.js', 'ota.js'), 'rb').read()
@@ -9,6 +12,7 @@ STATUS = {"state":"connected","ssid":"Home","host":"wt32","apSsid":"WT32-Setup-1
  "toEth":[12,1400],"dropWifiDown":0,"dropEthDown":0,"txErrWifi":0,"txErrEth":0,"foreign":0,"ipv6Dropped":0,
  "dhcpRewrites":4,"mgmtIp":"192.168.1.50","mgmtPort":28480,"mgmtFrames":[3,4],"mgmtTxErr":0,"mgmtFlows":1,"mgmtEvictions":0,
  "port":4000,"client":False,"en":False,"boot":False,
+ "build":dict(mock_i18n.BUILD, project="c3_programmer"),
  "ota":{"supported":True,"running":"ota_0","maxSize":1966080,"probation":False}}
 class H(http.server.BaseHTTPRequestHandler):
     def log_message(self, *a): pass
@@ -30,7 +34,8 @@ class H(http.server.BaseHTTPRequestHandler):
         if self.path == '/': return self.send(200, PAGE, 'text/html; charset=utf-8')
         if self.path == '/auth.js': return self.send(200, AUTHJS, 'application/javascript')
         if self.path == '/ota.js': return self.send(200, OTAJS, 'application/javascript')
-        if not self.authed(): return self.send(401, {"ok":False,"auth":False,"message":"Потрібен вхід"})
+        if self.path.startswith('/i18n.json'): return self.send(200, L.response(self.path))
+        if not self.authed(): return self.send(401, L.err('err.loginRequired', auth=False))
         if self.path == '/api/status': return self.send(200, dict(STATUS, defaultPassword=state['default']))
         if self.path == '/api/scan': return self.send(200, [{"ssid":"Home","rssi":-50,"open":False}])
         self.send(404, {})
@@ -38,12 +43,12 @@ class H(http.server.BaseHTTPRequestHandler):
         f = self.form()
         if self.path == '/api/login':
             if f.get('password') != state['pw']:
-                return self.send(401, {"ok":False,"auth":False,"message":"Невірний пароль"})
+                return self.send(401, L.err('err.wrongPassword', auth=False))
             s = secrets.token_hex(16); state['sessions'].add(s)
             return self.send(200, {"ok":True,"defaultPassword":state['default']}, hdrs=[('Set-Cookie', f'sid={s}; Path=/; HttpOnly; SameSite=Strict')])
-        if not self.authed(): return self.send(401, {"ok":False,"auth":False,"message":"Потрібен вхід"})
+        if not self.authed(): return self.send(401, L.err('err.loginRequired', auth=False))
         if self.path == '/api/password':
-            if f.get('old') != state['pw']: return self.send(400, {"ok":False,"message":"Поточний пароль невірний"})
+            if f.get('old') != state['pw']: return self.send(400, L.err('err.theCurrentPasswordIsWrong'))
             state.update(pw=f['new'], default=False); state['sessions'] = {self.sid()}
             return self.send(200, {"ok":True})
         if self.path == '/api/logout':

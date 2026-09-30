@@ -12,13 +12,13 @@ const assert = require('assert');
   const errors = []; p.on('pageerror', e => errors.push(e.message));
   const login = async () => {
     await p.waitForSelector('#loginOv', { timeout: 20000 });
-    await p.fill('#loginOv input', '12345678'); await p.click('#loginOv button');
+    await p.fill('#loginOv input', '12345678'); await p.click('#loginOv button[type=submit]');
     await p.waitForSelector('#loginOv', { state: 'detached' });
   };
   const msg = () => p.textContent('#ota > div:last-child');
 
   await p.goto(base); await login();
-  await p.waitForFunction(() => document.querySelector('#ota .mute').textContent.includes('розділ ota_0'));
+  await p.waitForFunction(() => document.querySelector('#ota .mute').textContent.includes('partition ota_0'));
 
   // 1. merged image for 0x0 is refused, nothing restarts
   await p.setInputFiles('#ota input[type=file]', merged);
@@ -28,9 +28,9 @@ const assert = require('assert');
   // 2. the OTA image: written, restart, log in again, running from ota_1
   await p.setInputFiles('#ota input[type=file]', ota);
   await p.click('#ota button');
-  await p.waitForFunction(() => document.querySelector('#ota > div:last-child').textContent.includes('Перезапуск'));
+  await p.waitForFunction(() => document.querySelector('#ota > div:last-child').textContent.includes('Restarting'));
   await login();
-  await p.waitForFunction(() => document.querySelector('#ota > div:last-child').textContent.includes('Оновлено до версії '), null, { timeout: 30000 });
+  await p.waitForFunction(() => document.querySelector('#ota > div:last-child').textContent.includes('Updated to version '), null, { timeout: 30000 });
   assert((await p.textContent('#ota .mute')).includes('ota_1'));
 
   // 3. rollback: the device comes back from the same slot
@@ -38,7 +38,7 @@ const assert = require('assert');
   await p.setInputFiles('#ota input[type=file]', ota);
   await p.click('#ota button');
   await login();
-  await p.waitForFunction(() => document.querySelector('#ota > div:last-child').textContent.includes('повернуто попередню'), null, { timeout: 30000 });
+  await p.waitForFunction(() => document.querySelector('#ota > div:last-child').textContent.includes('the previous one is back'), null, { timeout: 30000 });
 
   assert.deepStrictEqual(errors, [], 'no page errors');
   console.log('ota section: refuse / update / rollback ok');

@@ -31,7 +31,7 @@ How to wire the ESP32-C3 SuperMini programmer to the WT32-ETH01, flash it the fi
    ```bash
    esptool.py --chip esp32 -p rfc2217://c3prog.local:4000 flash_id
    ```
-   It should print the chip (ESP32-D0WD…) and the flash size (4 MB). If it cannot connect, swap the TX/RX wires first. If auto-reset fails, press "Flash mode" («Режим прошивки») on the C3 page and add `--before no_reset`.
+   It should print the chip (ESP32-D0WD…) and the flash size (4 MB). If it cannot connect, swap the TX/RX wires first. If auto-reset fails, press **Download mode** on the C3 page and add `--before no_reset`.
 4. The first time, erase the flash (it holds the factory AT firmware), then write the full image:
    ```bash
    esptool.py --chip esp32 -p rfc2217://c3prog.local:4000 erase_flash
@@ -49,7 +49,7 @@ If `.local` names do not resolve (common on Windows without Bonjour), use the C3
 ## 3. After flashing: with or without the programmer
 
 - **Keep it attached** to see the log and to reflash over Wi-Fi. The C3 releases EN and IO0, so the WT32 runs normally.
-- **Take it off:** unplug the six wires and power the WT32 on its own (section 4). Later updates go through the WT32 web page: Firmware update («Оновлення прошивки») with `wt32/firmware/wt32-bridge-ota.bin`, with rollback if the new firmware does not start. The cable is only needed again if the WT32 cannot boot at all.
+- **Take it off:** unplug the six wires and power the WT32 on its own (section 4). Later updates go through the WT32 web page: **Firmware** section, **Update firmware** with `wt32/firmware/wt32-bridge-ota.bin`, with rollback if the new firmware does not start. The cable is only needed again if the WT32 cannot boot at all.
 
 ## 4. WT32 on its own (in the case)
 

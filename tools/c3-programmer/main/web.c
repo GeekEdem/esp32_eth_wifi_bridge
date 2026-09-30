@@ -27,17 +27,17 @@ static esp_err_t target_post(httpd_req_t *req)
     char form[64], action[16];
     if (setup_portal_read_form(req, form, sizeof(form)) != ESP_OK ||
         setup_portal_form_value(form, "action", action, sizeof(action)) != ESP_OK) {
-        return setup_portal_send_error(req, "Пошкоджений запит");
+        return setup_portal_send_error_key(req, "err.malformedRequest", "Malformed request");
     }
     if (bridge_client_connected()) {
-        return setup_portal_send_error(req, "Зараз активна сесія RFC2217 — спершу завершіть її");
+        return setup_portal_send_error_key(req, "err.anRfc2217SessionIsActive", "An RFC2217 session is active: close it first");
     }
     if (strcmp(action, "reset") == 0) {
         target_reset();
     } else if (strcmp(action, "boot") == 0) {
         target_enter_bootloader();
     } else {
-        return setup_portal_send_error(req, "Невідома дія");
+        return setup_portal_send_error_key(req, "err.unknownAction", "Unknown action");
     }
     return setup_portal_send_json(req, "{\"ok\":true}");
 }
@@ -49,6 +49,8 @@ esp_err_t web_start(void)
         .page_len = page_end - page_start - 1,   /* EMBED_TXTFILES adds a NUL */
         .status_extra = status_extra,
         .ota = true,
+        .langs = portal_langs,
+        .lang_count = portal_lang_count,
         .before_restart = target_release,
     };
     esp_err_t err = setup_portal_start(&cfg);

@@ -10,7 +10,7 @@ const assert = require('assert');
   const log = async () => (await (await fetch(`${base}/_log`)).json()).map(([u, f]) => u + ' ' + JSON.stringify(f));
 
   await p.goto(base);
-  await p.fill('#loginOv input', '12345678'); await p.click('#loginOv button');
+  await p.fill('#loginOv input', '12345678'); await p.click('#loginOv button[type=submit]');
   await p.waitForSelector('#loginOv', { state: 'detached' });
 
   // client mode status
@@ -40,13 +40,13 @@ const assert = require('assert');
   assert(await p.isVisible('#tblOwn') && !(await p.isVisible('#tblClient')) && !(await p.isVisible('#traffic')));
   assert(await p.isChecked('input[value=own]'));
   assert.strictEqual(await p.textContent('#ownSsid'), 'Printer-Net');
-  assert((await p.textContent('#ownPassHint')).includes('лишити поточний'));
+  assert((await p.textContent('#ownPassHint')).includes('keep the current password'));
 
   // router -> access point: same network settings, the IP field is the fallback
   await p.check('input[value=ap]');
   assert(await p.isVisible('#cfgOwn') && !(await p.isVisible('#cfgClient')));
-  assert.strictEqual(await p.textContent('#ownIpLbl'), 'Запасна адреса WT32');
-  assert((await p.textContent('#modeHelp')).includes('Кабель WT32 — у роутер'));
+  assert.strictEqual(await p.textContent('#ownIpLbl'), 'Fallback WT32 address');
+  assert((await p.textContent('#modeHelp')).includes("The WT32's cable goes into a router"));
   assert.strictEqual(await p.inputValue('#ownSsidIn'), 'Printer-Net');
   await p.click('#saveOwn');
   await p.waitForFunction(() => document.getElementById('msg').textContent.includes('wt32.local'));
@@ -60,31 +60,31 @@ const assert = require('assert');
   assert(await p.isVisible('#tblAp') && !(await p.isVisible('#tblOwn')) && !(await p.isVisible('#dhcpSec')) && !(await p.isVisible('#traffic')));
   assert(await p.isChecked('input[value=ap]'));
   assert.strictEqual(await p.getAttribute('#apIp a', 'href'), 'http://192.168.1.23/');
-  assert((await p.textContent('#apIp')).includes('від роутера'));
+  assert((await p.textContent('#apIp')).includes('from the router'));
   assert.strictEqual(await p.textContent('#apGw'), '192.168.1.1');
   assert.strictEqual(await p.textContent('#apSsidT'), 'Printer-Net');
   await fetch(`${base}/_fallback`);
-  await p.waitForFunction(() => document.getElementById('apIp').textContent.includes('запасна'));
+  await p.waitForFunction(() => document.getElementById('apIp').textContent.includes('fallback'));
   assert.strictEqual(await p.getAttribute('#apIp a', 'href'), 'http://192.168.50.1/');
   assert.strictEqual(await p.textContent('#apGw'), '—');
   assert((await p.textContent('#hint')).includes('DHCP'));
   await p.check('input[value=own]');
-  assert.strictEqual(await p.textContent('#ownIpLbl'), 'Адреса WT32');
+  assert.strictEqual(await p.textContent('#ownIpLbl'), 'WT32 address');
 
   // back to client: mode without restart first, then Wi-Fi (which restarts)
   await p.check('input[value=client]');
   await p.waitForFunction(() => document.querySelector('#ssid option[value="Home"]'));
   await p.fill('#pass', 'homepass1'); await p.click('#saveClient');
-  await p.waitForFunction(() => document.getElementById('msg').textContent.includes('«Home»'));
+  await p.waitForFunction(() => document.getElementById('msg').textContent.includes('“Home”'));
   l = await log();
   assert.deepStrictEqual(l.slice(-2), [
     '/api/mode {"mode":"client","restart":"0"}',
     '/api/wifi {"ssid":"Home","pass":"homepass1"}']);
 
   // one-time setup start from the button: the page says so
-  assert(!(await p.textContent('#hint')).includes('Разовий'));
+  assert(!(await p.textContent('#hint')).includes('One-time'));
   await fetch(`${base}/_setupboot`);
-  await p.waitForFunction(() => document.getElementById('hint').textContent.includes('Разовий запуск'));
+  await p.waitForFunction(() => document.getElementById('hint').textContent.includes('One-time setup start'));
 
   assert.deepStrictEqual(errors, [], 'no page errors');
   await p.screenshot({ path: process.env.SHOT || '/dev/null', fullPage: true }).catch(() => {});

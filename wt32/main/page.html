@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="uk">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -37,95 +37,95 @@ code{font-size:13px;word-break:break-all;background:var(--bg);padding:2px 6px;bo
 <h1>WT32</h1>
 
 <section>
-<h2>Стан</h2>
+<h2 data-i18n="page.status">Status</h2>
 <table id="tblClient" hidden>
-<tr><td>Режим</td><td>клієнт наявної мережі</td></tr>
+<tr><td data-i18n="page.mode">Mode</td><td data-i18n="page.modeClient">client of an existing network</td></tr>
 <tr><td>Wi-Fi</td><td id="wifi">…</td></tr>
 <tr><td>Ethernet</td><td id="eth">…</td></tr>
-<tr><td>Пристрій (MAC)</td><td id="devMac">…</td></tr>
-<tr><td>Пристрій (IP)</td><td id="devIp">…</td></tr>
-<tr><td>Ця сторінка в мережі</td><td id="mgmt">…</td></tr>
+<tr><td data-i18n="page.devMac">Device (MAC)</td><td id="devMac">…</td></tr>
+<tr><td data-i18n="page.devIp">Device (IP)</td><td id="devIp">…</td></tr>
+<tr><td data-i18n="page.thisPage">This page on the network</td><td id="mgmt">…</td></tr>
 </table>
 <table id="tblOwn" hidden>
-<tr><td>Режим</td><td>роутер</td></tr>
-<tr><td>Мережа</td><td id="ownSsid">…</td></tr>
-<tr><td>Адреса WT32</td><td id="ownIp">…</td></tr>
+<tr><td data-i18n="page.mode">Mode</td><td data-i18n="page.modeRouter">router</td></tr>
+<tr><td data-i18n="page.network">Network</td><td id="ownSsid">…</td></tr>
+<tr><td data-i18n="page.wt32Addr">WT32 address</td><td id="ownIp">…</td></tr>
 <tr><td>Ethernet</td><td id="ownEth">…</td></tr>
-<tr><td>Пристрій (MAC)</td><td id="ownDevMac">…</td></tr>
-<tr><td>Пристрій (IP)</td><td id="ownDevIp">…</td></tr>
-<tr><td>Клієнтів Wi-Fi</td><td id="apClients">…</td></tr>
+<tr><td data-i18n="page.devMac">Device (MAC)</td><td id="ownDevMac">…</td></tr>
+<tr><td data-i18n="page.devIp">Device (IP)</td><td id="ownDevIp">…</td></tr>
+<tr><td data-i18n="page.apClients">Wi-Fi clients</td><td id="apClients">…</td></tr>
 </table>
 <table id="tblAp" hidden>
-<tr><td>Режим</td><td>точка доступу</td></tr>
-<tr><td>Мережа</td><td id="apSsidT">…</td></tr>
-<tr><td>Адреса WT32</td><td id="apIp">…</td></tr>
-<tr><td>Шлюз (роутер)</td><td id="apGw">…</td></tr>
+<tr><td data-i18n="page.mode">Mode</td><td data-i18n="page.modeAp">access point</td></tr>
+<tr><td data-i18n="page.network">Network</td><td id="apSsidT">…</td></tr>
+<tr><td data-i18n="page.wt32Addr">WT32 address</td><td id="apIp">…</td></tr>
+<tr><td data-i18n="page.gateway">Gateway (router)</td><td id="apGw">…</td></tr>
 <tr><td>Ethernet</td><td id="apEth">…</td></tr>
-<tr><td>Клієнтів Wi-Fi</td><td id="apCl">…</td></tr>
+<tr><td data-i18n="page.apClients">Wi-Fi clients</td><td id="apCl">…</td></tr>
 </table>
 <div id="hint" class="mute" style="margin-top:8px"></div>
 </section>
 
 <section id="dhcpSec" hidden>
-<h2>Адреси в мережі (DHCP)</h2>
+<h2 data-i18n="page.dhcpTitle">Network addresses (DHCP)</h2>
 <table id="leases"></table>
-<div class="mute" style="margin-top:8px">«Закріпити» — пристрій завжди отримуватиме цю адресу, навіть після перезапуску WT32.</div>
-<label for="resMac">Закріпити вручну: MAC</label>
+<div class="mute" style="margin-top:8px" data-i18n="page.pinHint">“Pin”: the device always gets this address, even after the WT32 restarts.</div>
+<label for="resMac" data-i18n="page.pinMac">Pin manually: MAC</label>
 <input id="resMac" placeholder="AA:BB:CC:DD:EE:FF" autocapitalize="characters" spellcheck="false">
-<label for="resIp">IP-адреса</label>
+<label for="resIp" data-i18n="page.ipAddr">IP address</label>
 <input id="resIp" inputmode="decimal" placeholder="192.168.77.50">
-<button class="sec" id="resAdd" type="button">Закріпити</button>
+<button class="sec" id="resAdd" type="button" data-i18n="page.pin">Pin</button>
 <div class="msg" id="dhcpMsg"></div>
 </section>
 
 <section id="traffic" hidden>
-<h2>Трафік</h2>
+<h2 data-i18n="page.traffic">Traffic</h2>
 <table>
-<tr><td>Пристрій → Wi-Fi</td><td id="toWifi">…</td></tr>
-<tr><td>Wi-Fi → пристрій</td><td id="toEth">…</td></tr>
-<tr><td>Відкинуто: Wi-Fi не підключено</td><td id="dropWifiDown">…</td></tr>
-<tr><td>Відкинуто: немає Ethernet</td><td id="dropEthDown">…</td></tr>
-<tr><td>Помилки передачі Wi-Fi / Ethernet</td><td id="txErr">…</td></tr>
-<tr><td>Кадри від другого пристрою</td><td id="foreign">…</td></tr>
-<tr><td>IPv6 відкинуто</td><td id="ipv6Dropped">…</td></tr>
-<tr><td>DHCP-перезаписи</td><td id="dhcpRewrites">…</td></tr>
-<tr><td>Службовий трафік WT32 (прийнято / надіслано)</td><td id="mgmtFrames">…</td></tr>
-<tr><td>Відкриті службові зʼєднання</td><td id="mgmtFlows">…</td></tr>
+<tr><td data-i18n="page.toWifi">Device → Wi-Fi</td><td id="toWifi">…</td></tr>
+<tr><td data-i18n="page.toEth">Wi-Fi → device</td><td id="toEth">…</td></tr>
+<tr><td data-i18n="page.dropWifi">Dropped: Wi-Fi not connected</td><td id="dropWifiDown">…</td></tr>
+<tr><td data-i18n="page.dropEth">Dropped: no Ethernet</td><td id="dropEthDown">…</td></tr>
+<tr><td data-i18n="page.txErr">Transmit errors Wi-Fi / Ethernet</td><td id="txErr">…</td></tr>
+<tr><td data-i18n="page.foreign">Frames from a second device</td><td id="foreign">…</td></tr>
+<tr><td data-i18n="page.ipv6">IPv6 dropped</td><td id="ipv6Dropped">…</td></tr>
+<tr><td data-i18n="page.dhcpRw">DHCP rewrites</td><td id="dhcpRewrites">…</td></tr>
+<tr><td data-i18n="page.mgmtFrames">WT32 management traffic (in / out)</td><td id="mgmtFrames">…</td></tr>
+<tr><td data-i18n="page.mgmtFlows">Open management connections</td><td id="mgmtFlows">…</td></tr>
 </table>
-<button class="sec" id="relearn" type="button">Забути пристрій (після заміни)</button>
+<button class="sec" id="relearn" type="button" data-i18n="page.relearn">Forget the device (after replacing it)</button>
 </section>
 
 <section>
-<h2>Режим</h2>
+<h2 data-i18n="page.modeTitle">Mode</h2>
 <div class="modes">
-<label id="lblClient"><input type="radio" name="mode" value="client">Клієнт</label>
-<label id="lblOwn"><input type="radio" name="mode" value="own">Роутер</label>
-<label id="lblAp"><input type="radio" name="mode" value="ap">Точка доступу</label>
+<label id="lblClient"><input type="radio" name="mode" value="client"><span data-i18n="page.lblClient">Client</span></label>
+<label id="lblOwn"><input type="radio" name="mode" value="own"><span data-i18n="page.lblRouter">Router</span></label>
+<label id="lblAp"><input type="radio" name="mode" value="ap"><span data-i18n="page.lblAp">Access point</span></label>
 </div>
 <p class="mute" id="modeHelp"></p>
 
 <div id="cfgClient" hidden>
-<label for="ssid">Мережа Wi-Fi</label>
-<select id="ssid"><option value="">Сканую…</option></select>
-<input id="ssidManual" placeholder="Назва мережі вручну" style="display:none;margin-top:8px">
-<button class="sec" id="rescan" type="button">Оновити список</button>
-<label for="pass">Пароль</label>
-<input id="pass" type="password" autocomplete="off" placeholder="Порожньо — відкрита мережа">
-<button id="saveClient" type="button">Зберегти і перезапустити</button>
+<label for="ssid" data-i18n="page.wifiNet">Wi-Fi network</label>
+<select id="ssid"><option value="" data-i18n="page.scanning">Scanning…</option></select>
+<input id="ssidManual" placeholder="Network name" data-i18n-ph="page.ssidManual" style="display:none;margin-top:8px">
+<button class="sec" id="rescan" type="button" data-i18n="page.rescan">Refresh list</button>
+<label for="pass" data-i18n="page.password">Password</label>
+<input id="pass" type="password" autocomplete="off" placeholder="Empty: open network" data-i18n-ph="page.passOpen">
+<button id="saveClient" type="button" data-i18n="page.saveRestart">Save and restart</button>
 </div>
 
 <div id="cfgOwn" hidden>
-<label for="ownSsidIn">Назва мережі</label>
+<label for="ownSsidIn" data-i18n="page.netName">Network name</label>
 <input id="ownSsidIn" maxlength="32">
-<label for="ownPassIn">Пароль мережі (8–63 символи)</label>
+<label for="ownPassIn" data-i18n="page.netPass">Network password (8–63 characters)</label>
 <input id="ownPassIn" type="password" autocomplete="new-password" maxlength="63">
 <div class="mute" id="ownPassHint"></div>
-<label for="ownCh">Канал</label>
+<label for="ownCh" data-i18n="page.channel">Channel</label>
 <select id="ownCh"></select>
-<label for="ownIpIn" id="ownIpLbl">Адреса WT32</label>
+<label for="ownIpIn" id="ownIpLbl" data-i18n="page.ipOwn">WT32 address</label>
 <input id="ownIpIn" inputmode="decimal" placeholder="192.168.77.1">
 <div class="mute" id="ownIpHint"></div>
-<button id="saveOwn" type="button">Зберегти і перезапустити</button>
+<button id="saveOwn" type="button" data-i18n="page.saveRestart">Save and restart</button>
 </div>
 <div class="msg" id="msg"></div>
 </section>
@@ -137,140 +137,146 @@ code{font-size:13px;word-break:break-all;background:var(--bg);padding:2px 6px;bo
 <section id="ota"></section>
 
 <section>
-<button class="danger" id="forget" type="button">Забути Wi-Fi клієнта</button>
-<div class="mute" id="ver" style="margin-top:12px"></div>
+<button class="danger" id="forget" type="button" data-i18n="page.forgetWifi">Forget client Wi-Fi</button>
 </section>
 </main>
 <script>
 const $=id=>document.getElementById(id);
-const msg=(t,bad)=>{const m=$('msg');m.textContent=t;m.className='msg '+(bad?'bad':'ok')};
-const set=(id,t,cls)=>{const e=$(id);e.textContent=t;e.className=cls||''};
-const size=b=>b<1024?b+' Б':b<1048576?(b/1024).toFixed(1)+' КБ':(b/1048576).toFixed(1)+' МБ';
-const HELP={
-  client:'WT32 підключається до наявного Wi-Fi. Пристрій на Ethernet отримує IP від роутера цієї мережі й доступний, ніби під’єднаний кабелем. Ця сторінка — на http://<IP пристрою>:28480.',
-  own:'WT32 роздає власний Wi-Fi і сам видає адреси (DHCP), як роутер, але без інтернету. Пристрій на Ethernet і телефони — в одній мережі й бачать одне одного.',
-  ap:'Кабель WT32 — у роутер (або світч мережі з DHCP). WT32 роздає цю мережу по Wi-Fi: адреси, інтернет і все інше — від роутера. Сторінка — за адресою, яку WT32 отримає від роутера, або http://wt32.local.'
-};
-const IPTXT={
-  own:['Адреса WT32','Мережа — /24 навколо цієї адреси; пристрої отримують .100–.200.'],
-  ap:['Запасна адреса WT32','Якщо на кабелі 30 с немає DHCP, WT32 бере цю адресу й сам видає телефонам адреси .100–.200 (лише по Wi-Fi), щоб сторінка була доступна. Щойно DHCP зʼявиться — повертається до нього.']
-};
+const t=(k,p)=>I18N.t(k,p);
+const msg=(s,bad)=>{const m=$('msg');m.textContent=s;m.className='msg '+(bad?'bad':'ok')};
+const set=(id,s,cls)=>{const e=$(id);e.textContent=s;e.className=cls||''};
+const size=b=>b<1024?t('page.B',{n:b}):b<1048576?t('page.KB',{n:(b/1024).toFixed(1)}):t('page.MB',{n:(b/1048576).toFixed(1)});
+const HELP={client:'page.helpClient',own:'page.helpRouter',ap:'page.helpAp'};
+const IPTXT={own:['page.ipOwn','page.ipOwnHint'],ap:['page.ipAp','page.ipApHint']};
 const MODES={client:'lblClient',own:'lblOwn',ap:'lblAp'};
-let cur=null, ownFilled=false;
+let cur=null, ownFilled=false, shown=null, scanList=null, passKeep=false;
 
 for(let c=1;c<=13;c++){const o=document.createElement('option');o.value=c;o.textContent=c;$('ownCh').append(o);}
 
 async function post(url,data){
   const r=await fetch(url,{method:'POST',body:new URLSearchParams(data)});
-  const j=await r.json().catch(()=>({ok:false,message:'Немає відповіді'}));
-  if(!j.ok)throw new Error(j.message||'Помилка');
+  const j=await r.json().catch(()=>({ok:false,message:t('common.noAnswer')}));
+  if(!j.ok)throw new Error(I18N.msg(j));
   return j;
 }
 
 function showMode(m){
+  shown=m;
   document.querySelectorAll('input[name=mode]').forEach(r=>r.checked=r.value===m);
   for(const k in MODES)$(MODES[k]).className=m===k?'on':'';
   $('cfgClient').hidden=m!=='client';$('cfgOwn').hidden=m==='client';
-  if(IPTXT[m]){$('ownIpLbl').textContent=IPTXT[m][0];$('ownIpHint').textContent=IPTXT[m][1];}
-  $('modeHelp').textContent=HELP[m]+(cur&&m!==cur.mode?' Зміна режиму — після збереження й перезапуску.':'');
+  if(IPTXT[m]){$('ownIpLbl').dataset.i18n=IPTXT[m][0];$('ownIpLbl').textContent=t(IPTXT[m][0]);$('ownIpHint').textContent=t(IPTXT[m][1]);}
+  $('modeHelp').textContent=t(HELP[m])+(cur&&m!==cur.mode?' '+t('page.modeChange'):'');
 }
 document.querySelectorAll('input[name=mode]').forEach(r=>r.onchange=()=>showMode(r.value));
 
+const link=on=>on?t('page.link'):t('page.noLink');
+
 function renderClient(s){
-  if(s.state==='connected')set('wifi',`«${s.ssid}», ${s.rssi} дБм`,'ok');
-  else if(s.state==='connecting')set('wifi',`підключення до «${s.ssid}»…`,'bad');
-  else set('wifi','не налаштовано','bad');
-  set('eth',s.eth?'є лінк':'немає лінку',s.eth?'ok':'bad');
-  set('devMac',s.devMac||'ще не бачили',s.devMac?'':'mute');
-  set('devIp',s.devIp||'ще не бачили',s.devIp?'ok':'mute');
+  if(s.state==='connected')set('wifi',t('page.wifiConnected',{ssid:s.ssid,rssi:s.rssi}),'ok');
+  else if(s.state==='connecting')set('wifi',t('page.wifiConnecting',{ssid:s.ssid}),'bad');
+  else set('wifi',t('page.wifiNone'),'bad');
+  set('eth',link(s.eth),s.eth?'ok':'bad');
+  set('devMac',s.devMac||t('page.notSeen'),s.devMac?'':'mute');
+  set('devIp',s.devIp||t('page.notSeen'),s.devIp?'ok':'mute');
   const m=$('mgmt');m.textContent='';m.className='';
   if(s.mgmtIp){const a=document.createElement('a');a.href=`http://${s.mgmtIp}:${s.mgmtPort}/`;a.textContent=`${s.mgmtIp}:${s.mgmtPort}`;m.append(a);}
-  else{m.textContent='після появи IP пристрою';m.className='mute';}
-  $('hint').textContent=s.devIp?`Пристрій доступний у мережі за адресою ${s.devIp}.`:(s.ap?`Поки IP пристрою невідома, сторінка доступна через точку «${s.apSsid}».`:'');
-  set('toWifi',`${s.toWifi[0]} кадрів, ${size(s.toWifi[1])}`);
-  set('toEth',`${s.toEth[0]} кадрів, ${size(s.toEth[1])}`);
+  else{m.textContent=t('page.afterIp');m.className='mute';}
+  $('hint').textContent=s.devIp?t('page.devReachable',{ip:s.devIp}):(s.ap?t('page.viaSetup',{ap:s.apSsid}):'');
+  set('toWifi',t('page.frames',{n:s.toWifi[0],size:size(s.toWifi[1])}));
+  set('toEth',t('page.frames',{n:s.toEth[0],size:size(s.toEth[1])}));
   set('dropWifiDown',s.dropWifiDown);set('dropEthDown',s.dropEthDown);
   set('txErr',`${s.txErrWifi} / ${s.txErrEth}`,(s.txErrWifi||s.txErrEth)?'bad':'');
   set('foreign',s.foreign,s.foreign?'bad':'');
   set('ipv6Dropped',s.ipv6Dropped);set('dhcpRewrites',s.dhcpRewrites);
-  set('mgmtFrames',`${s.mgmtFrames[0]} / ${s.mgmtFrames[1]}`+(s.mgmtTxErr?` (помилок ${s.mgmtTxErr})`:''),s.mgmtTxErr?'bad':'');
-  set('mgmtFlows',s.mgmtFlows+(s.mgmtEvictions?` (витіснено ${s.mgmtEvictions})`:''));
+  set('mgmtFrames',`${s.mgmtFrames[0]} / ${s.mgmtFrames[1]}`+(s.mgmtTxErr?t('page.errors',{n:s.mgmtTxErr}):''),s.mgmtTxErr?'bad':'');
+  set('mgmtFlows',s.mgmtFlows+(s.mgmtEvictions?t('page.evicted',{n:s.mgmtEvictions}):''));
 }
 
 function leaseRow(l,devMac){
   const tr=document.createElement('tr');
   const who=document.createElement('td');
-  who.textContent=(l.host||'—')+(l.mac===devMac?' (на кабелі)':'');
+  who.textContent=(l.host||'—')+(l.mac===devMac?t('page.onCable'):'');
   const mac=document.createElement('div');mac.className='mute';mac.textContent=l.mac;who.append(mac);
   const ip=document.createElement('td');ip.textContent=l.ip;
   const st=document.createElement('div');st.className='mute';
-  st.textContent=l.reserved?'закріплено':`ще ${Math.max(1,Math.round(l.left/60))} хв`;ip.append(st);
+  st.textContent=l.reserved?t('page.pinned'):t('page.minutesLeft',{m:Math.max(1,Math.round(l.left/60))});ip.append(st);
   const act=document.createElement('td');
   const b=document.createElement('button');b.type='button';b.className='sec';b.style.margin='0';b.style.padding='6px 10px';b.style.width='auto';
-  b.textContent=l.reserved?'Відкріпити':'Закріпити';
+  b.textContent=l.reserved?t('page.unpin'):t('page.pin');
   b.onclick=async()=>{
-    try{await post(l.reserved?'/api/dhcp/unreserve':'/api/dhcp/reserve',l.reserved?{mac:l.mac}:{mac:l.mac,ip:l.ip});dmsg(l.reserved?'Відкріплено':'Закріплено');status();}
+    try{await post(l.reserved?'/api/dhcp/unreserve':'/api/dhcp/reserve',l.reserved?{mac:l.mac}:{mac:l.mac,ip:l.ip});dmsg(t(l.reserved?'page.unpinnedOk':'page.pinnedOk'));status();}
     catch(e){dmsg(e.message,true)}
   };
   act.append(b);tr.append(who,ip,act);return tr;
 }
-const dmsg=(t,bad)=>{const m=$('dhcpMsg');m.textContent=t;m.className='msg '+(bad?'bad':'ok')};
+const dmsg=(s,bad)=>{const m=$('dhcpMsg');m.textContent=s;m.className='msg '+(bad?'bad':'ok')};
 
 function renderOwn(s){
   const tb=$('leases');tb.textContent='';
-  if(!s.dhcp||!s.dhcp.length){const tr=document.createElement('tr');const td=document.createElement('td');td.className='mute';td.textContent='ще ніхто не отримав адресу';tr.append(td);tb.append(tr);}
+  if(!s.dhcp||!s.dhcp.length){const tr=document.createElement('tr');const td=document.createElement('td');td.className='mute';td.textContent=t('page.noLeases');tr.append(td);tb.append(tr);}
   else s.dhcp.forEach(l=>tb.append(leaseRow(l,s.devMac)));
   set('ownSsid',s.own.ssid);set('ownIp',s.ownIp);
-  set('ownEth',s.eth?'є лінк':'немає лінку',s.eth?'ok':'bad');
-  set('ownDevMac',s.devMac||'ще не бачили',s.devMac?'':'mute');
-  set('ownDevIp',s.devIp||(s.devMac?'чекаю DHCP…':'ще не бачили'),s.devIp?'ok':'mute');
+  set('ownEth',link(s.eth),s.eth?'ok':'bad');
+  set('ownDevMac',s.devMac||t('page.notSeen'),s.devMac?'':'mute');
+  set('ownDevIp',s.devIp||(s.devMac?t('page.waitDhcp'):t('page.notSeen')),s.devIp?'ok':'mute');
   set('apClients',s.apClients);
-  $('hint').textContent=s.devIp?`Пристрій доступний у мережі за адресою ${s.devIp}.`:'';
+  $('hint').textContent=s.devIp?t('page.devReachable',{ip:s.devIp}):'';
 }
 
 function renderAp(s){
   set('apSsidT',s.own.ssid);
   const a=$('apIp');a.textContent='';a.className='';
   if(s.apIp){const l=document.createElement('a');l.href=`http://${s.apIp}/`;l.textContent=s.apIp;a.append(l);
-    a.append(s.uplink==='fallback'?' (запасна: на кабелі немає DHCP)':' (від роутера)');if(s.uplink==='fallback')a.className='bad';}
-  else{a.textContent='чекаю DHCP…';a.className='mute';}
+    a.append(s.uplink==='fallback'?t('page.fallback'):t('page.fromRouter'));if(s.uplink==='fallback')a.className='bad';}
+  else{a.textContent=t('page.waitDhcp');a.className='mute';}
   set('apGw',s.gw||'—',s.gw?'':'mute');
-  set('apEth',s.eth?'є лінк':'немає лінку',s.eth?'ok':'bad');
+  set('apEth',link(s.eth),s.eth?'ok':'bad');
   set('apCl',s.apClients);
-  $('hint').textContent=s.uplink==='fallback'?'Перевірте, що кабель у роутері й на ньому увімкнено DHCP. WT32 шукає DHCP кожні 30 с.':'';
+  $('hint').textContent=s.uplink==='fallback'?t('page.checkCable'):'';
+}
+
+function render(s){
+  $('tblClient').hidden=$('traffic').hidden=s.mode!=='client';
+  $('tblOwn').hidden=$('dhcpSec').hidden=s.mode!=='own';
+  $('tblAp').hidden=s.mode!=='ap';
+  $('hint').className='mute';
+  if(s.mode==='own')renderOwn(s);else if(s.mode==='ap')renderAp(s);else renderClient(s);
+  if(s.setupBoot){$('hint').className='bad';$('hint').textContent=t('page.setupBoot');}
+  $('ownPassHint').textContent=passKeep?t('page.passKeep'):'';
 }
 
 async function status(){
   try{
     const s=await (await fetch('/api/status')).json();
     const first=!cur;cur=s;
-    $('tblClient').hidden=$('traffic').hidden=s.mode!=='client';
-    $('tblOwn').hidden=$('dhcpSec').hidden=s.mode!=='own';
-    $('tblAp').hidden=s.mode!=='ap';
-    if(s.mode==='own')renderOwn(s);else if(s.mode==='ap')renderAp(s);else renderClient(s);
-    if(s.setupBoot){$('hint').className='bad';$('hint').textContent='Разовий запуск для налаштування (кнопка на WT32). Збережені режим і мережі не змінено: після перезапуску WT32 повернеться до них, якщо не збережете нові.';}
     if(!ownFilled){
       $('ownSsidIn').value=s.own.ssid;$('ownCh').value=s.own.channel;$('ownIpIn').value=s.own.ip;
-      $('ownPassHint').textContent=s.own.passSet?'Порожньо — лишити поточний пароль.':'';
+      passKeep=s.own.passSet;
       ownFilled=true;
     }
+    render(s);
     if(first)showMode(s.mode);
-    $('ver').textContent='Версія '+s.version;
-  }catch(e){$('hint').className='bad';$('hint').textContent='Немає звʼязку з WT32';}
+  }catch(e){$('hint').className='bad';$('hint').textContent=t('page.noConnection');}
 }
 
-async function scan(){
-  const sel=$('ssid');sel.disabled=true;sel.innerHTML='<option value="">Сканую…</option>';
-  let list=[];
-  try{list=await (await fetch('/api/scan')).json();}catch(e){}
-  const seen=new Set();sel.innerHTML='';
-  list.sort((a,b)=>b.rssi-a.rssi).forEach(n=>{
+function fillScan(){
+  const sel=$('ssid');sel.innerHTML='';
+  const seen=new Set();
+  scanList.slice().sort((a,b)=>b.rssi-a.rssi).forEach(n=>{
     if(seen.has(n.ssid))return;seen.add(n.ssid);
     const o=document.createElement('option');o.value=n.ssid;
-    o.textContent=`${n.ssid}  (${n.rssi} дБм${n.open?', відкрита':''})`;sel.append(o);
+    o.textContent=`${n.ssid}  (`+t('page.dbm',{n:n.rssi})+(n.open?t('page.open'):'')+')';sel.append(o);
   });
-  if(!list.length){const o=document.createElement('option');o.value='';o.textContent='Мереж не знайдено — оновіть';sel.append(o);}
-  const m=document.createElement('option');m.value='__manual';m.textContent='Інша (ввести вручну)…';sel.append(m);
+  if(!scanList.length){const o=document.createElement('option');o.value='';o.textContent=t('page.noNets');sel.append(o);}
+  const m=document.createElement('option');m.value='__manual';m.textContent=t('page.other');sel.append(m);
+}
+async function scan(){
+  const sel=$('ssid'),keep=sel.value;sel.disabled=true;
+  sel.innerHTML='';const o=document.createElement('option');o.value='';o.textContent=t('page.scanning');sel.append(o);
+  let list=[];
+  try{list=await (await fetch('/api/scan')).json();}catch(e){}
+  scanList=list;fillScan();if(keep)sel.value=keep;
   sel.disabled=false;pick();
 }
 function pick(){$('ssidManual').style.display=$('ssid').value==='__manual'?'block':'none'}
@@ -279,41 +285,44 @@ $('rescan').onclick=scan;
 
 $('saveClient').onclick=async()=>{
   const ssid=$('ssid').value==='__manual'?$('ssidManual').value.trim():$('ssid').value;
-  if(!ssid)return msg('Оберіть мережу',true);
+  if(!ssid)return msg(t('page.chooseNet'),true);
   $('saveClient').disabled=true;
   try{
     await post('/api/mode',{mode:'client',restart:'0'});
     await post('/api/wifi',{ssid,pass:$('pass').value});
-    msg(`Збережено. WT32 перезапускається й підключиться до «${ssid}». Далі сторінка — на http://<IP пристрою>:28480 або через точку «WT32-Setup-…», поки IP невідома.`);
+    msg(t('page.savedClient',{ssid}));
   }catch(e){msg(e.message,true);$('saveClient').disabled=false;}
 };
 
 $('saveOwn').onclick=async()=>{
   const pass=$('ownPassIn').value;
-  if(pass&&(pass.length<8||pass.length>63))return msg('Пароль мережі має бути 8–63 символи',true);
+  if(pass&&(pass.length<8||pass.length>63))return msg(t('page.passLen'),true);
   $('saveOwn').disabled=true;
   try{
     const ip=$('ownIpIn').value.trim(), ssid=$('ownSsidIn').value.trim();
     const mode=document.querySelector('input[name=mode]:checked').value;
     await post('/api/own',{ssid,pass,channel:$('ownCh').value,ip});
     await post('/api/mode',{mode});
-    msg(mode==='ap'
-      ?`Збережено. WT32 перезапускається з мережею «${ssid}». Підключіться до неї й відкрийте http://wt32.local (або адресу WT32 у списку клієнтів роутера); без DHCP на кабелі — http://${ip}`
-      :`Збережено. WT32 перезапускається з мережею «${ssid}». Підключіться до неї й відкрийте http://${ip}`);
+    msg(t(mode==='ap'?'page.savedAp':'page.savedRouter',{ssid,ip}));
   }catch(e){msg(e.message,true);$('saveOwn').disabled=false;}
 };
 
 $('resAdd').onclick=async()=>{
-  try{await post('/api/dhcp/reserve',{mac:$('resMac').value.trim().toUpperCase(),ip:$('resIp').value.trim()});dmsg('Закріплено');$('resMac').value=$('resIp').value='';status();}
+  try{await post('/api/dhcp/reserve',{mac:$('resMac').value.trim().toUpperCase(),ip:$('resIp').value.trim()});dmsg(t('page.pinnedOk'));$('resMac').value=$('resIp').value='';status();}
   catch(e){dmsg(e.message,true)}
 };
-$('relearn').onclick=async()=>{try{await post('/api/relearn',{});msg('Пристрій забуто; WT32 запамʼятає перший, що озветься');}catch(e){msg(e.message,true)}};
+$('relearn').onclick=async()=>{try{await post('/api/relearn',{});msg(t('page.relearned'));}catch(e){msg(e.message,true)}};
 $('forget').onclick=async()=>{
-  if(!confirm('Забути мережу Wi-Fi клієнта? WT32 перезапуститься.'))return;
-  try{await post('/api/forget',{});msg('Мережу забуто.');}catch(e){msg(e.message,true)}
+  if(!confirm(t('page.forgetConfirm')))return;
+  try{await post('/api/forget',{});msg(t('page.forgotten'));}catch(e){msg(e.message,true)}
 };
 
-status();scan();setInterval(status,3000);
+I18N.onChange(()=>{
+  if(cur)render(cur);
+  if(shown)showMode(shown);
+  if(scanList){const keep=$('ssid').value;fillScan();$('ssid').value=keep;}
+});
+I18N.ready.then(()=>{status();scan();setInterval(status,3000);});
 </script>
 </body>
 </html>

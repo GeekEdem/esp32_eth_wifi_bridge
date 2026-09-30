@@ -2,7 +2,7 @@
 
 *[Українська](README_UA.md)*
 
-This component runs **one** user script in [Berry](https://github.com/berry-lang/berry), a lightweight language for microcontrollers (used by Tasmota). The script is written and started on the device's web page, in the Script (Berry) section («Скрипт (Berry)»).
+This component runs **one** user script in [Berry](https://github.com/berry-lang/berry), a lightweight language for microcontrollers (used by Tasmota). The script is written and started on the device's web page, in the **Script (Berry)** section (its texts: [`i18n/`](i18n/)).
 
 > Status: built into the WT32 firmware; the language side (prelude, timers, limits, errors) has been tested on a PC with real Berry and this configuration, and the page in a browser. **Not verified** on hardware.
 
@@ -11,7 +11,7 @@ This component runs **one** user script in [Berry](https://github.com/berry-lang
 | Call | What it does |
 |---|---|
 | `print(...)` | a line in the page console (and in the UART log) |
-| `output(key, value)` | a result in the Results table («Результати») (up to 16 keys; they are also shown on the display) |
+| `output(key, value)` | a result in the **Results** table (up to 16 keys; they are also shown on the display) |
 | `output(key)` | removes a result |
 | `every(ms, fn)` → id | call `fn` every `ms` |
 | `after(ms, fn)` → id | call `fn` once after `ms` |

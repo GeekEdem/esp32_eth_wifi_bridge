@@ -6,7 +6,7 @@ Firmware for the **ESP32-C3 SuperMini** that turns it into a programmer and seri
 
 - **Over Wi-Fi (RFC2217):** `esptool` / `idf.py` flash the WT32 and read its log as an ordinary port `rfc2217://c3prog.local:4000`. Baud rate and DTR/RTS are passed over the network: RTS → EN, DTR → IO0, as on a regular USB-UART adapter with auto-reset.
 - **Over USB (fallback):** C3 USB ↔ WT32 UART at a fixed 115200. The bootloader is entered with the button or from the web page.
-- **Web page** `http://c3prog.local`: Wi-Fi selection, status, "Restart" («Перезапустити») and "Flash mode" («Режим прошивки») buttons for the WT32, firmware update of the C3 itself.
+- **Web page** `http://c3prog.local` (English / Ukrainian): Wi-Fi selection, status, **Restart** and **Download mode** buttons for the WT32, the C3's own firmware (version, build time, commit, SHA-256) and its update.
 
 > Status: built (ESP-IDF 6.1), **not verified** on hardware.
 
@@ -27,19 +27,19 @@ If the C3 does not show up as a port: hold BOOT, press RESET, release BOOT, and 
 ## 2. Connect to Wi-Fi
 
 1. After flashing, the C3 starts the access point **`C3prog-Setup-XXXX`** (open). The LED double-blinks.
-2. Connect to it with a phone — the setup page opens by itself (if not, go to http://192.168.4.1). The page password is `12345678`; change it in the "Page password" section («Пароль сторінки»).
-3. Choose the network, enter its password, optionally change the device name → "Save and restart" («Зберегти і перезапустити»).
+2. Connect to it with a phone — the setup page opens by itself (if not, go to http://192.168.4.1). The page password is `12345678`; change it in the **Page password** section. The EN / УКР switch (on the login form and in the header) changes the page language.
+3. Choose the network, enter its password, optionally change the device name → **Save and restart**.
 4. The C3 connects to the network; the page is at `http://c3prog.local` (or the IP from the router). The LED stays on.
 
 If the saved network is unavailable for 60 s, the setup access point is turned on again (the C3 keeps trying to connect meanwhile).
 
 ## Updating the C3 firmware through the page (OTA)
 
-In the "Firmware update" section («Оновлення прошивки») of the page: file **`firmware/c3-programmer-ota.bin`** → "Update firmware" («Оновити прошивку»). The page rejects the full image `c3-programmer.bin` (for address `0x0`) — it is only for flashing over the cable.
+In the **Firmware** section of the page: file **`firmware/c3-programmer-ota.bin`** → **Update firmware**. The page rejects the full image `c3-programmer.bin` (for address `0x0`) — it is only for flashing over the cable.
 
 - Before writing, the image is checked to be for this chip and this firmware; after writing, its integrity is checked.
 - The flash has two slots (`ota_0`/`ota_1`, 1.875 MB each); the new firmware is written into the inactive one, the old one stays.
-- After the restart the new firmware is **on trial for 60 s**: if it crashes or restarts within that time, the bootloader returns to the previous one. The page shows which version is actually running.
+- After the restart the new firmware is **on trial for 60 s**: if it crashes or restarts within that time, the bootloader returns to the previous one. The Firmware table shows which version is actually running, with its build time and commit.
 - Sessions do not survive a restart — the page asks you to log in again.
 - The first time, firmware with this partition layout must be written over the cable (full image at `0x0`); the settings (NVS) are kept.
 
@@ -82,7 +82,7 @@ python -m serial.tools.miniterm --rts 0 --dtr 0 rfc2217://c3prog.local:4000 1152
 
 If `.local` does not resolve (common on Windows without Bonjour), use the IP from the status page.
 
-If auto-reset over the network does not work: press "Flash mode" («Режим прошивки») on the page (or BOOT briefly on the C3), then run `esptool.py ... --before no_reset ...`.
+If auto-reset over the network does not work: press **Download mode** on the page (or BOOT briefly on the C3), then run `esptool.py ... --before no_reset ...`.
 
 ## Flashing the WT32 over USB (fallback)
 
@@ -91,10 +91,10 @@ The C3's USB does not pass the baud rate or DTR/RTS, so:
 - `--before no_reset --after no_reset`: reset signals from the PC would reset the C3 itself, not the WT32.
 
 ```bash
-# 1. «Режим прошивки» on the page or BOOT briefly on the C3
+# 1. "Download mode" on the page or BOOT briefly on the C3
 cd build   # WT32 firmware build directory
 esptool.py --chip esp32 -p /dev/ttyACM0 -b 115200 --before no_reset --after no_reset write_flash @flash_args
-# 2. «Перезапустити» on the page or BOOT 1–5 s
+# 2. "Restart" on the page or BOOT 1–5 s
 ```
 
 Monitor: `python -m serial.tools.miniterm --dtr 0 --rts 0 /dev/ttyACM0 115200`
@@ -110,6 +110,8 @@ cd tools/c3-programmer
 ```
 
 Wi-Fi and the setup portal are the shared component [`shared/wifi_setup`](../../shared/wifi_setup). Dependencies (`rfc2217-server`, `mdns`) are pulled from GitHub. Pins, RFC2217 port, Wi-Fi TX power: `idf.py menuconfig` → *C3 Programmer Configuration*.
+
+Page texts: [`main/i18n/<code>.json`](main/i18n/) plus the shared ones in [`shared/wifi_setup/i18n/`](../../shared/wifi_setup/i18n/); a new language is a new `<code>.json` in both folders (details in [`wt32/README.md`](../../wt32/README.md#languages)). Test: `shared/wifi_setup/test` (login and languages).
 
 ## Known limitations
 

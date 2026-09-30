@@ -11,28 +11,28 @@ const assert = require('assert');
   const wait = fn => p.waitForFunction(fn, null, { timeout: 10000 });
 
   await p.goto(base);
-  await p.fill('#loginOv input', '12345678'); await p.click('#loginOv button');
+  await p.fill('#loginOv input', '12345678'); await p.click('#loginOv button[type=submit]');
   await p.waitForSelector('#loginOv', { state: 'detached' });
   // own network needs saved settings first, then a "restart"
   await p.check('input[value=own]');
   await p.fill('#ownPassIn', 'labelprint1'); await p.click('#saveOwn');
-  await wait(() => document.getElementById('msg').textContent.includes('перезапускається'));
+  await wait(() => document.getElementById('msg').textContent.includes('restarts'));
   await fetch(`${base}/_restart`);
   await p.reload();
 
   await wait(() => document.querySelectorAll('#leases tr').length === 2);
   assert(await p.isVisible('#dhcpSec'));
   const first = await p.textContent('#leases tr:nth-child(1)');
-  assert(first.includes('GS-2406T (на кабелі)') && first.includes('192.168.77.100') && first.includes('ще 90 хв'), first);
+  assert(first.includes('GS-2406T (on the cable)') && first.includes('192.168.77.100') && first.includes('90 min left'), first);
 
   await p.click('#leases tr:nth-child(1) button');               // pin the printer
-  await wait(() => document.querySelector('#leases tr:nth-child(1)').textContent.includes('закріплено'));
-  assert((await p.textContent('#leases tr:nth-child(1) button')) === 'Відкріпити');
+  await wait(() => document.querySelector('#leases tr:nth-child(1)').textContent.includes('pinned'));
+  assert((await p.textContent('#leases tr:nth-child(1) button')) === 'Unpin');
   await p.click('#leases tr:nth-child(1) button');               // and unpin
-  await wait(() => document.querySelector('#leases tr:nth-child(1) button').textContent === 'Закріпити');
+  await wait(() => document.querySelector('#leases tr:nth-child(1) button').textContent === 'Pin');
 
   await p.fill('#resMac', 'de:ad:be:ef:00:01'); await p.fill('#resIp', '10.0.0.5'); await p.click('#resAdd');
-  await wait(() => document.getElementById('dhcpMsg').textContent.includes('поза мережею'));
+  await wait(() => document.getElementById('dhcpMsg').textContent.includes('outside the WT32 network'));
   await p.fill('#resIp', '192.168.77.50'); await p.click('#resAdd');
   await wait(() => document.querySelectorAll('#leases tr').length === 3);
   assert((await p.textContent('#leases tr:nth-child(3)')).includes('DE:AD:BE:EF:00:01'));

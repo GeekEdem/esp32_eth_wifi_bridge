@@ -53,22 +53,22 @@ static bool s_setup_boot;
 static wt32_mode_t s_mode;
 
 static const char SCRIPT_EXAMPLE[] =
-    "# Приклад скрипта WT32 (мова Berry: https://berry.readthedocs.io).\n"
-    "# output(ключ, значення) показує результат на сторінці; print() пише в консоль.\n"
-    "# status() повертає стан пристрою (mode, eth, devIp, devMac, ...).\n"
+    "# WT32 script example (Berry language: https://berry.readthedocs.io).\n"
+    "# output(key, value) shows a result on the page; print() writes to the console.\n"
+    "# status() returns the device state (mode, eth, devIp, devMac, ...).\n"
     "\n"
     "def show()\n"
     "  var s = status()\n"
-    "  var names = {\"client\": \"клієнт\", \"own\": \"роутер\", \"ap\": \"точка доступу\"}\n"
-    "  output(\"Режим\", names.find(s[\"mode\"], s[\"mode\"]))\n"
-    "  output(\"Ethernet\", s[\"eth\"] ? \"є лінк\" : \"немає\")\n"
-    "  output(\"IP пристрою\", s[\"devIp\"] != \"\" ? s[\"devIp\"] : \"—\")\n"
-    "  output(\"Вільна памʼять\", str(heap() / 1024) + \" КБ\")\n"
+    "  var names = {\"client\": \"client\", \"own\": \"router\", \"ap\": \"access point\"}\n"
+    "  output(\"Mode\", names.find(s[\"mode\"], s[\"mode\"]))\n"
+    "  output(\"Ethernet\", s[\"eth\"] ? \"link up\" : \"no link\")\n"
+    "  output(\"Device IP\", s[\"devIp\"] != \"\" ? s[\"devIp\"] : \"-\")\n"
+    "  output(\"Free memory\", str(heap() / 1024) + \" KB\")\n"
     "end\n"
     "\n"
     "show()\n"
     "every(5000, show)\n"
-    "print(\"скрипт запущено\")\n";
+    "print(\"script started\")\n";
 
 static void report_client(void)
 {

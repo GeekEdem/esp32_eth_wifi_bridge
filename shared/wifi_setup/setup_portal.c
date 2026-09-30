@@ -125,14 +125,21 @@ esp_err_t setup_portal_send_json(httpd_req_t *req, const char *json)
     return httpd_resp_sendstr(req, json);
 }
 
-esp_err_t setup_portal_send_error(httpd_req_t *req, const char *message)
+esp_err_t setup_portal_send_error_key(httpd_req_t *req, const char *key, const char *en)
 {
     char buf[384];
-    size_t pos = setup_portal_appendf(buf, 0, sizeof(buf), "{\"ok\":false,\"message\":");
-    pos = setup_portal_json_str(buf, pos, sizeof(buf) - 2, message);
+    size_t pos = setup_portal_appendf(buf, 0, sizeof(buf), "{\"ok\":false,\"key\":");
+    pos = setup_portal_json_str(buf, pos, sizeof(buf) - 2, key);
+    pos = setup_portal_appendf(buf, pos, sizeof(buf) - 2, ",\"message\":");
+    pos = setup_portal_json_str(buf, pos, sizeof(buf) - 2, en);
     strcpy(buf + pos, "}");
     httpd_resp_set_status(req, "400 Bad Request");
     return setup_portal_send_json(req, buf);
+}
+
+esp_err_t setup_portal_send_msg(httpd_req_t *req, portal_msg_t msg)
+{
+    return setup_portal_send_error_key(req, msg.key, msg.en);
 }
 
 static void restart_cb(void *arg)
@@ -167,10 +174,75 @@ static esp_err_t ota_js_get(httpd_req_t *req)
     return httpd_resp_send(req, ota_js_start, ota_js_end - ota_js_start - 1);
 }
 
+/* {"lang":"uk","langs":[{"code","name","label"},...],"strings":{...}} for ?l=<code>
+ * (unknown or missing: the first language). Public: the login form needs it. */
+static esp_err_t i18n_get(httpd_req_t *req)
+{
+    const portal_lang_t *lang = s_cfg.lang_count ? &s_cfg.langs[0] : NULL;
+    char q[32], code[12];
+    if (httpd_req_get_url_query_str(req, q, sizeof(q)) == ESP_OK &&
+        httpd_query_key_value(q, "l", code, sizeof(code)) == ESP_OK) {
+        for (size_t i = 0; i < s_cfg.lang_count; i++) {
+            if (strcmp(s_cfg.langs[i].code, code) == 0) {
+                lang = &s_cfg.langs[i];
+            }
+        }
+    }
+    char head[1024];
+    size_t pos = setup_portal_appendf(head, 0, sizeof(head), "{\"lang\":");
+    pos = setup_portal_json_str(head, pos, sizeof(head), lang ? lang->code : "");
+    pos = setup_portal_appendf(head, pos, sizeof(head), ",\"langs\":[");
+    for (size_t i = 0; i < s_cfg.lang_count; i++) {
+        pos = setup_portal_appendf(head, pos, sizeof(head), "%s{\"code\":", i ? "," : "");
+        pos = setup_portal_json_str(head, pos, sizeof(head), s_cfg.langs[i].code);
+        pos = setup_portal_appendf(head, pos, sizeof(head), ",\"name\":");
+        pos = setup_portal_json_str(head, pos, sizeof(head), s_cfg.langs[i].name);
+        pos = setup_portal_appendf(head, pos, sizeof(head), ",\"label\":");
+        pos = setup_portal_json_str(head, pos, sizeof(head), s_cfg.langs[i].label);
+        pos = setup_portal_appendf(head, pos, sizeof(head), "}");
+    }
+    pos = setup_portal_appendf(head, pos, sizeof(head), "],\"strings\":");
+    httpd_resp_set_type(req, "application/json; charset=utf-8");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+    esp_err_t err = httpd_resp_send_chunk(req, head, pos);
+    if (err == ESP_OK) {
+        err = lang ? httpd_resp_send_chunk(req, lang->json, lang->json_len) : httpd_resp_send_chunk(req, "{}", 2);
+    }
+    if (err == ESP_OK) {
+        err = httpd_resp_send_chunk(req, "}", 1);
+    }
+    return err == ESP_OK ? httpd_resp_send_chunk(req, NULL, 0) : err;
+}
+
 static esp_err_t page_get(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "text/html; charset=utf-8");
     return httpd_resp_send(req, s_cfg.page, s_cfg.page_len);
+}
+
+#ifndef PORTAL_GIT_COMMIT
+#define PORTAL_GIT_COMMIT "unknown"
+#endif
+
+/* ,"build":{...}: which firmware this is, exactly. */
+static size_t build_json(char *buf, size_t pos, size_t cap)
+{
+    const esp_app_desc_t *d = esp_app_get_description();
+    char elf[17];
+    esp_app_get_elf_sha256(elf, sizeof(elf));
+    pos = setup_portal_appendf(buf, pos, cap, ",\"build\":{\"project\":");
+    pos = setup_portal_json_str(buf, pos, cap, d->project_name);
+    pos = setup_portal_appendf(buf, pos, cap, ",\"version\":");
+    pos = setup_portal_json_str(buf, pos, cap, d->version);
+    pos = setup_portal_appendf(buf, pos, cap, ",\"date\":");
+    pos = setup_portal_json_str(buf, pos, cap, d->date);
+    pos = setup_portal_appendf(buf, pos, cap, ",\"time\":");
+    pos = setup_portal_json_str(buf, pos, cap, d->time);
+    pos = setup_portal_appendf(buf, pos, cap, ",\"commit\":");
+    pos = setup_portal_json_str(buf, pos, cap, PORTAL_GIT_COMMIT);
+    pos = setup_portal_appendf(buf, pos, cap, ",\"elf\":\"%s\",\"idf\":", elf);
+    pos = setup_portal_json_str(buf, pos, cap, d->idf_ver);
+    return setup_portal_appendf(buf, pos, cap, "}");
 }
 
 static esp_err_t status_get(httpd_req_t *req)
@@ -183,7 +255,7 @@ static esp_err_t status_get(httpd_req_t *req)
     char ip[16];
     wifi_setup_ip(ip, sizeof(ip));
 
-    const size_t cap = 1536;
+    const size_t cap = 4608;    /* room for the application fields, e.g. 32 DHCP leases */
     char *buf = malloc(cap);    /* two servers may answer at once: no shared buffer */
     if (!buf) {
         return httpd_resp_send_500(req);
@@ -199,6 +271,7 @@ static esp_err_t status_get(httpd_req_t *req)
                                wifi_setup_ap_active() ? "true" : "false", ip, wifi_setup_rssi(),
                                portal_auth_is_default() ? "true" : "false",
                                esp_app_get_description()->version);
+    pos = build_json(buf, pos, cap - 2);
     if (s_cfg.ota) {
         pos = portal_ota_status(buf, pos, cap - 2);
     }
@@ -261,20 +334,20 @@ static esp_err_t wifi_post(httpd_req_t *req)
         setup_portal_form_value(form, "ssid", ssid, sizeof(ssid)) != ESP_OK ||
         setup_portal_form_value(form, "pass", pass, sizeof(pass)) != ESP_OK ||
         setup_portal_form_value(form, "host", host, sizeof(host)) != ESP_OK) {
-        return setup_portal_send_error(req, "Задовгі або пошкоджені дані форми");
+        return setup_portal_send_error_key(req, "err.formDataTooLongOr", "Form data too long or malformed");
     }
     if (!ssid[0]) {
-        return setup_portal_send_error(req, "Оберіть мережу");
+        return setup_portal_send_error_key(req, "err.chooseANetwork", "Choose a network");
     }
     size_t plen = strlen(pass);
     if (plen != 0 && (plen < 8 || plen > 63)) {
-        return setup_portal_send_error(req, "Пароль Wi-Fi має бути 8–63 символи (або порожній для відкритої мережі)");
+        return setup_portal_send_error_key(req, "err.theWiFiPasswordMust", "The Wi-Fi password must be 8–63 characters (or empty for an open network)");
     }
     if (host[0] && !hostname_valid(host)) {
-        return setup_portal_send_error(req, "Імʼя пристрою: лише a–z, 0–9 і дефіс, до 32 символів");
+        return setup_portal_send_error_key(req, "err.deviceNameAZ0", "Device name: a–z, 0–9 and hyphen only, up to 32 characters");
     }
     if (wifi_setup_save(ssid, pass, host) != ESP_OK) {
-        return setup_portal_send_error(req, "Не вдалося зберегти налаштування");
+        return setup_portal_send_error_key(req, "err.couldNotSaveTheSettings", "Could not save the settings");
     }
     ESP_LOGI(TAG, "saved network \"%s\", restarting", ssid);
     setup_portal_restart_later();
@@ -284,7 +357,7 @@ static esp_err_t wifi_post(httpd_req_t *req)
 static esp_err_t forget_post(httpd_req_t *req)
 {
     if (wifi_setup_forget() != ESP_OK) {
-        return setup_portal_send_error(req, "Не вдалося стерти налаштування");
+        return setup_portal_send_error_key(req, "err.couldNotEraseTheSettings", "Could not erase the settings");
     }
     ESP_LOGI(TAG, "network forgotten, restarting into setup");
     setup_portal_restart_later();
@@ -400,6 +473,7 @@ esp_err_t setup_portal_start(const setup_portal_config_t *cfg)
     const httpd_uri_t open_uris[] = {
         { .uri = "/",            .method = HTTP_GET,  .handler = page_get },
         { .uri = "/auth.js",     .method = HTTP_GET,  .handler = auth_js_get },
+        { .uri = "/i18n.json",   .method = HTTP_GET,  .handler = i18n_get },
         { .uri = "/api/login",   .method = HTTP_POST, .handler = portal_auth_login_post },
     };
     const httpd_uri_t uris[] = {

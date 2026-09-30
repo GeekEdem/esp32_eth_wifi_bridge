@@ -13,41 +13,41 @@ const assert = require('assert');
   const waitText = (fn, arg) => p.waitForFunction(fn, arg, { timeout: 10000 });
 
   await p.goto(base);
-  await p.fill('#loginOv input', '12345678'); await p.click('#loginOv button');
+  await p.fill('#loginOv input', '12345678'); await p.click('#loginOv button[type=submit]');
   await p.waitForSelector('#loginOv', { state: 'detached' });
 
   const ta = '#script textarea';
-  await waitText(sel => document.querySelector(sel).value.includes('Приклад'), ta);
-  assert((await text('#script')).includes('у редакторі приклад'));
+  await waitText(sel => document.querySelector(sel).value.includes('Example'), ta);
+  assert((await text('#script')).includes('the editor shows an example'));
 
   // save & run
-  await p.fill(ta, "print('hi')\noutput('Режим', 'клієнт')\n");
-  await p.click('#script button:has-text("Зберегти й запустити")');
-  await waitText(() => document.querySelector('#script > div').textContent.includes('працює'));
+  await p.fill(ta, "print('hi')\noutput('Mode', 'client')\n");
+  await p.click('#script button:has-text("Save and run")');
+  await waitText(() => document.querySelector('#script > div').textContent.includes('running'));
   await waitText(() => document.querySelector('#script table').textContent.includes('192.168.1.50'));
-  await waitText(() => document.querySelector('#script pre').textContent.includes('скрипт запущено'));
-  assert(!(await text('#script')).includes('у редакторі приклад'));
-  assert((await text('#script')).includes('Памʼять скрипта: 8.8 КБ'));
+  await waitText(() => document.querySelector('#script pre').textContent.includes('script started'));
+  assert(!(await text('#script')).includes('the editor shows an example'));
+  assert((await text('#script')).includes('Script memory: 8.8 KB'));
 
   // stop; console gets appended, not replaced
-  await p.click('#script button:has-text("Зупинити")');
-  await waitText(() => document.querySelector('#script > div').textContent.includes('зупинено'));
+  await p.click('#script button:has-text("Stop")');
+  await waitText(() => document.querySelector('#script > div').textContent.includes('stopped'));
   await waitText(() => document.querySelector('#script pre').textContent.includes('-- stopped'));
-  assert((await text('#script pre')).includes('скрипт запущено'));
+  assert((await text('#script pre')).includes('script started'));
 
   // autostart
   await p.check('#script input[type=checkbox]');
-  await waitText(() => document.querySelector('#script').textContent.includes('Запускатиметься при старті'));
+  await waitText(() => document.querySelector('#script').textContent.includes('Will run at startup'));
 
   // an error is shown with its message
   await p.fill(ta, 'while true end');
-  await p.click('#script button:has-text("Зберегти й запустити")');
+  await p.click('#script button:has-text("Save and run")');
   await waitText(() => document.querySelector('#script > div').textContent.includes('timeout_error'));
 
   // too long for the device: refused on the page, nothing sent
   await p.fill(ta, 'x'.repeat(40000));
-  await p.click('#script button:has-text("Зберегти й запустити")');
-  await waitText(() => document.querySelector('#script').textContent.includes('Скрипт більший за'));
+  await p.click('#script button:has-text("Save and run")');
+  await waitText(() => document.querySelector('#script').textContent.includes('The script is larger than'));
 
   assert.deepStrictEqual(errors, [], 'no page errors');
   console.log('script section: example / run / stop / autostart / error / size ok');

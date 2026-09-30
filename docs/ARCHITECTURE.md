@@ -73,6 +73,15 @@ Partition table `shared/partitions/4mb_ota.csv` (both firmwares): two OTA slots 
 
 Through the page: a `…-ota.bin` file, chip/project check before writing, write into the inactive slot, a 60 s "trial" after start, otherwise rollback to the previous firmware.
 
+`/api/status` carries `build` (project, version, build date/time, source commit from `git describe --always --dirty` at configure time, ELF SHA-256, ESP-IDF), shown in the page's Firmware section. A release image is built from a clean git checkout so the commit is exact (a copy without `.git` gives `unknown`, local changes give `-dirty`).
+
+## Page languages
+
+- Texts are flat JSON files `i18n/<code>.json` next to each part that has page texts (`wt32/main`, `tools/c3-programmer/main`, `shared/wifi_setup`, `shared/script_berry`); `en` is the reference, `_name` / `_label` name the language. `portal_i18n()` (`shared/wifi_setup/project_include.cmake`) runs `tools/i18n_bundle.py` at build time: the folders of an app are merged, missing texts are filled from English, placeholders are checked, and the result is compiled in as `portal_langs[]`.
+- The device serves `GET /i18n.json?l=<code>` (public: the login form needs it). `auth.js` holds the language: `data-i18n*` attributes in the HTML (the HTML itself is English, shown until the texts load), `I18N.t()` for texts built in JS, a switch in the header and on the login form, the choice in `localStorage`, the browser's language as the default.
+- The device never sends display text: errors are `{"ok":false,"key":"err.…","message":"English"}` and the page shows the key's text in its language. So a new language needs no firmware code, only JSON files.
+- The display stays Ukrainian for now (its own 6×10 font and 21-character lines).
+
 ## Tools
 
 - `shared/wifi_setup/` — shared component: Wi-Fi station with settings in NVS, setup access point with captive portal, basic web API (`/api/status`, `/api/scan`, `/api/wifi`, `/api/forget`), page password (default `12345678`, changeable on the page; salt + SHA-256 in NVS; 30 min cookie sessions; 30 s lockout after 5 failed attempts) and `auth.js` with the login form. Mode `sta_netif = false` — a station without IP for the transparent bridge.
@@ -83,9 +92,10 @@ Through the page: a `…-ota.bin` file, chip/project check before writing, write
 The main firmware is `wt32/` (stages 0–2 are built into it; not verified on hardware, checklist in `wt32/README.md`).
 
 0. ✅ C3 programmer; ⏳ hardware check with a real device (checklist in `wt32/README.md`).
-1. ✅ Mode switch ("Client" / "Router" / "Access point" («Клієнт» / «Роутер» / «Точка доступу»)) and captive portal; page password; own DHCP server with address reservations.
+1. ✅ Mode switch ("Client" / "Router" / "Access point") and captive portal; page password; own DHCP server with address reservations.
 2. ✅ Shared IP and management port.
 3. ✅ Old code removed; OTA through the page with rollback.
 4. ✅ Berry (see above).
 5. ✅ Display and button.
 6. ✅ Printable case (`hardware/case/`): WT32 from the STEP model, checks for intersections, clearances, walls and overhangs; ⏳ check display / USB-C / button against real parts, test print.
+7. ✅ Page in English and Ukrainian (languages as JSON files); firmware info (version, build time, commit, hash) on the page.

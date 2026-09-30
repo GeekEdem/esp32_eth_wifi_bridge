@@ -65,25 +65,25 @@ static esp_err_t text_post(httpd_req_t *req)
 {
     size_t len = req->content_len;
     if (len > script_max_len()) {
-        return setup_portal_send_error(req, "Скрипт завеликий");
+        return setup_portal_send_error_key(req, "err.theScriptIsTooLarge", "The script is too large");
     }
     char *src = malloc(len + 1);
     if (!src) {
-        return setup_portal_send_error(req, "Бракує памʼяті для прийому скрипта");
+        return setup_portal_send_error_key(req, "err.notEnoughMemoryToReceive", "Not enough memory to receive the script");
     }
     size_t got = 0;
     while (got < len) {
         int r = httpd_req_recv(req, src + got, len - got);
         if (r <= 0) {
             free(src);
-            return setup_portal_send_error(req, "Передачу перервано");
+            return setup_portal_send_error_key(req, "err.theTransferWasInterrupted", "The transfer was interrupted");
         }
         got += r;
     }
     esp_err_t err = script_save(src, len);
     free(src);
     if (err != ESP_OK) {
-        return setup_portal_send_error(req, "Не вдалося зберегти скрипт");
+        return setup_portal_send_error_key(req, "err.couldNotSaveTheScript", "Could not save the script");
     }
     char run[4];
     if (query_flag(req, "run", run, sizeof(run)) && strcmp(run, "1") == 0) {
@@ -95,16 +95,16 @@ static esp_err_t text_post(httpd_req_t *req)
 static esp_err_t run_post(httpd_req_t *req)
 {
     if (!script_saved_len()) {
-        return setup_portal_send_error(req, "Скрипт ще не збережено");
+        return setup_portal_send_error_key(req, "err.noScriptHasBeenSaved", "No script has been saved yet");
     }
     return script_run() == ESP_OK ? setup_portal_send_json(req, "{\"ok\":true}")
-                                  : setup_portal_send_error(req, "Зайнято, спробуйте ще раз");
+                                  : setup_portal_send_error_key(req, "err.busyTryAgain", "Busy, try again");
 }
 
 static esp_err_t stop_post(httpd_req_t *req)
 {
     return script_stop() == ESP_OK ? setup_portal_send_json(req, "{\"ok\":true}")
-                                   : setup_portal_send_error(req, "Зайнято, спробуйте ще раз");
+                                   : setup_portal_send_error_key(req, "err.busyTryAgain", "Busy, try again");
 }
 
 static esp_err_t autostart_post(httpd_req_t *req)
@@ -112,10 +112,10 @@ static esp_err_t autostart_post(httpd_req_t *req)
     char form[16], on[4];
     if (setup_portal_read_form(req, form, sizeof(form)) != ESP_OK ||
         setup_portal_form_value(form, "on", on, sizeof(on)) != ESP_OK) {
-        return setup_portal_send_error(req, "Пошкоджений запит");
+        return setup_portal_send_error_key(req, "err.malformedRequest", "Malformed request");
     }
     if (script_set_autostart(strcmp(on, "1") == 0) != ESP_OK) {
-        return setup_portal_send_error(req, "Не вдалося зберегти");
+        return setup_portal_send_error_key(req, "err.couldNotSave", "Could not save");
     }
     return setup_portal_send_json(req, "{\"ok\":true}");
 }

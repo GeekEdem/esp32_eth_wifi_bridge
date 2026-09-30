@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="uk">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>C3-програматор</title>
+<title data-i18n="c3.title">C3 programmer</title>
 <style>
 :root{--bg:#f4f5f7;--card:#fff;--fg:#1c1f24;--mute:#6b7280;--acc:#2563eb;--ok:#15803d;--bad:#b91c1c;--line:#d8dce2}
 @media(prefers-color-scheme:dark){:root{--bg:#111418;--card:#1b1f25;--fg:#e8eaed;--mute:#9aa1ab;--acc:#5b8def;--ok:#4ade80;--bad:#f87171;--line:#2d333b}}
@@ -29,35 +29,35 @@ code{font-size:13px;word-break:break-all;background:var(--bg);padding:2px 6px;bo
 </head>
 <body>
 <main>
-<h1>C3-програматор WT32</h1>
+<h1 data-i18n="c3.heading">WT32 C3 programmer</h1>
 
 <section>
-<h2>Стан</h2>
-<div id="state" class="mute">Завантаження…</div>
+<h2 data-i18n="c3.status">Status</h2>
+<div id="state" class="mute" data-i18n="c3.loading">Loading…</div>
 <div id="rfc" style="margin-top:8px"></div>
 </section>
 
 <section>
 <h2>Wi-Fi</h2>
-<label for="ssid">Мережа</label>
-<select id="ssid"><option value="">Сканую…</option></select>
-<input id="ssidManual" placeholder="Назва мережі вручну" style="display:none;margin-top:8px">
-<button class="sec" id="rescan" type="button">Оновити список</button>
-<label for="pass">Пароль</label>
-<input id="pass" type="password" autocomplete="current-password" placeholder="Порожньо — відкрита мережа">
-<label for="host">Імʼя пристрою</label>
+<label for="ssid" data-i18n="c3.network">Network</label>
+<select id="ssid"><option value="" data-i18n="c3.scanning">Scanning…</option></select>
+<input id="ssidManual" data-i18n-ph="c3.ssidManual" placeholder="Network name" style="display:none;margin-top:8px">
+<button class="sec" id="rescan" type="button" data-i18n="c3.rescan">Refresh list</button>
+<label for="pass" data-i18n="c3.password">Password</label>
+<input id="pass" type="password" autocomplete="current-password" data-i18n-ph="c3.passOpen" placeholder="Empty: open network">
+<label for="host" data-i18n="c3.host">Device name</label>
 <input id="host" autocapitalize="off" spellcheck="false" placeholder="c3prog">
-<div class="mute" style="margin-top:4px">Адреса буде <code id="hostHint">c3prog.local</code></div>
-<button id="save" type="button">Зберегти і перезапустити</button>
+<div class="mute" style="margin-top:4px"><span data-i18n="c3.hostHint">The address will be</span> <code id="hostHint">c3prog.local</code></div>
+<button id="save" type="button" data-i18n="c3.saveRestart">Save and restart</button>
 </section>
 
 <section>
 <h2>WT32-ETH01</h2>
 <div class="row">
-<button class="sec" id="reset" type="button">Перезапустити</button>
-<button class="sec" id="boot" type="button">Режим прошивки</button>
+<button class="sec" id="reset" type="button" data-i18n="c3.reset">Restart</button>
+<button class="sec" id="boot" type="button" data-i18n="c3.boot">Download mode</button>
 </div>
-<div class="mute" style="margin-top:8px">«Режим прошивки» — для прошивки по USB з <code>--before no_reset</code>.</div>
+<div class="mute" style="margin-top:8px"><span data-i18n="c3.bootHint">“Download mode” is for flashing over USB with</span> <code>--before no_reset</code>.</div>
 </section>
 
 <section id="auth"></section>
@@ -65,56 +65,69 @@ code{font-size:13px;word-break:break-all;background:var(--bg);padding:2px 6px;bo
 <section id="ota"></section>
 
 <section>
-<button class="danger" id="forget" type="button">Забути Wi-Fi</button>
+<button class="danger" id="forget" type="button" data-i18n="c3.forget">Forget Wi-Fi</button>
 <div id="msg"></div>
-<div class="mute" id="ver"></div>
 </section>
 </main>
 <script>
 const $=id=>document.getElementById(id);
-const msg=(t,bad)=>{const m=$('msg');m.textContent=t;m.className=bad?'bad':'ok'};
-let hostSet=false;
+const t=(k,p)=>I18N.t(k,p);
+const msg=(s,bad)=>{const m=$('msg');m.textContent=s;m.className=bad?'bad':'ok'};
+let hostSet=false,cur=null,nets=null;
 
 async function post(url,data){
   const r=await fetch(url,{method:'POST',body:new URLSearchParams(data)});
-  const j=await r.json().catch(()=>({ok:false,message:'Немає відповіді'}));
-  if(!j.ok)throw new Error(j.message||'Помилка');
+  const j=await r.json().catch(()=>({ok:false,key:'common.noAnswer'}));
+  if(!j.ok)throw new Error(I18N.msg(j));
   return j;
+}
+
+function render(s){
+  const st=$('state');
+  if(!s){st.className='bad';st.textContent=t('c3.noConnection');return;}
+  if(s.state==='connected'){st.className='ok';st.textContent=t('c3.connected',{ssid:s.ssid,ip:s.ip,rssi:s.rssi});}
+  else if(s.state==='connecting'){st.className='mute';
+    st.textContent=t('c3.connecting',{ssid:s.ssid})+(s.ap?' '+t('c3.setupOn',{ap:s.apSsid}):'');}
+  else{st.className='mute';st.textContent=t('c3.notSaved');}
+  const r=$('rfc');r.textContent='';
+  if(s.state==='connected'){
+    const a=document.createElement('code');a.textContent=`rfc2217://${s.host}.local:${s.port}`;
+    const b=document.createElement('code');b.textContent=`rfc2217://${s.ip}:${s.port}`;
+    r.append(t('c3.port')+' ',a,' '+t('c3.or')+' ',b);
+  }
+  if(s.client){const c=document.createElement('div');c.className='ok';c.textContent=t('c3.client');r.append(c);}
 }
 
 async function status(){
   try{
-    const s=await (await fetch('/api/status')).json();
-    const st=$('state');
-    if(s.state==='connected'){st.className='ok';
-      st.textContent=`Підключено до «${s.ssid}», IP ${s.ip}, сигнал ${s.rssi} дБм`;}
-    else if(s.state==='connecting'){st.className='mute';st.textContent=`Підключення до «${s.ssid}»…`+(s.ap?` Точка налаштування «${s.apSsid}» увімкнена.`:'');}
-    else{st.className='mute';st.textContent='Мережу не збережено. Оберіть Wi-Fi нижче.';}
-    const r=$('rfc');r.innerHTML='';
-    if(s.state==='connected'){
-      const a=document.createElement('code');a.textContent=`rfc2217://${s.host}.local:${s.port}`;
-      const b=document.createElement('code');b.textContent=`rfc2217://${s.ip}:${s.port}`;
-      r.append('Порт для esptool / idf.py: ',a,' або ',b);
-    }
-    if(s.client){const c=document.createElement('div');c.className='ok';c.textContent='Зараз підключений клієнт RFC2217';r.append(c);}
-    if(!hostSet){$('host').value=s.host;hint();hostSet=true;}
-    $('ver').textContent='Версія '+s.version;
-  }catch(e){$('state').className='bad';$('state').textContent='Немає звʼязку з пристроєм';}
+    cur=await (await fetch('/api/status')).json();
+    if(!hostSet){$('host').value=cur.host;hint();hostSet=true;}
+  }catch(e){cur=null;}
+  render(cur);
 }
 
+function fillScan(){
+  const sel=$('ssid');
+  const keep=sel.value;
+  sel.textContent='';
+  const opt=(v,s)=>{const o=document.createElement('option');o.value=v;o.textContent=s;sel.append(o);};
+  if(nets===null){opt('',t('c3.scanning'));return;}
+  const seen=new Set();
+  nets.slice().sort((a,b)=>b.rssi-a.rssi).forEach(n=>{
+    if(seen.has(n.ssid))return;seen.add(n.ssid);
+    opt(n.ssid,`${n.ssid}  (${t('c3.dbm',{n:n.rssi})}${n.open?t('c3.open'):''})`);
+  });
+  if(!nets.length)opt('',t('c3.noNets'));
+  opt('__manual',t('c3.other'));
+  if([...sel.options].some(o=>o.value===keep))sel.value=keep;
+  pick();
+}
 async function scan(){
-  const sel=$('ssid');sel.disabled=true;sel.innerHTML='<option value="">Сканую…</option>';
+  const sel=$('ssid');sel.disabled=true;nets=null;fillScan();
   let list=[];
   try{list=await (await fetch('/api/scan')).json();}catch(e){}
-  const seen=new Set();sel.innerHTML='';
-  list.sort((a,b)=>b.rssi-a.rssi).forEach(n=>{
-    if(seen.has(n.ssid))return;seen.add(n.ssid);
-    const o=document.createElement('option');o.value=n.ssid;
-    o.textContent=`${n.ssid}  (${n.rssi} дБм${n.open?', відкрита':''})`;sel.append(o);
-  });
-  if(!list.length){const o=document.createElement('option');o.value='';o.textContent='Мереж не знайдено — оновіть';sel.append(o);}
-  const m=document.createElement('option');m.value='__manual';m.textContent='Інша (ввести вручну)…';sel.append(m);
-  sel.disabled=false;pick();
+  nets=Array.isArray(list)?list:[];
+  sel.disabled=false;fillScan();
 }
 function pick(){$('ssidManual').style.display=$('ssid').value==='__manual'?'block':'none'}
 function hint(){$('hostHint').textContent=($('host').value||'c3prog')+'.local'}
@@ -124,20 +137,22 @@ $('host').oninput=hint;
 $('rescan').onclick=scan;
 $('save').onclick=async()=>{
   const ssid=$('ssid').value==='__manual'?$('ssidManual').value.trim():$('ssid').value;
-  if(!ssid)return msg('Оберіть мережу',true);
+  if(!ssid)return msg(t('err.chooseANetwork'),true);
   $('save').disabled=true;
-  try{await post('/api/wifi',{ssid,pass:$('pass').value,host:$('host').value.trim().toLowerCase()});
-    msg(`Збережено. Пристрій перезапускається й підключиться до «${ssid}». Відкрийте http://${($('host').value.trim().toLowerCase()||'c3prog')}.local з тієї мережі.`);}
+  const host=$('host').value.trim().toLowerCase();
+  try{await post('/api/wifi',{ssid,pass:$('pass').value,host});
+    msg(t('c3.saved',{ssid,host:host||'c3prog'}));}
   catch(e){msg(e.message,true);$('save').disabled=false;}
 };
-$('reset').onclick=async()=>{try{await post('/api/target',{action:'reset'});msg('WT32 перезапущено');}catch(e){msg(e.message,true)}};
-$('boot').onclick=async()=>{try{await post('/api/target',{action:'boot'});msg('WT32 у режимі прошивки');}catch(e){msg(e.message,true)}};
+$('reset').onclick=async()=>{try{await post('/api/target',{action:'reset'});msg(t('c3.resetDone'));}catch(e){msg(e.message,true)}};
+$('boot').onclick=async()=>{try{await post('/api/target',{action:'boot'});msg(t('c3.bootDone'));}catch(e){msg(e.message,true)}};
 $('forget').onclick=async()=>{
-  if(!confirm('Забути мережу Wi-Fi? Пристрій перезапуститься в режим налаштування.'))return;
-  try{await post('/api/forget',{});msg('Мережу забуто. Підключіться до точки «C3prog-Setup-…».');}catch(e){msg(e.message,true)}
+  if(!confirm(t('c3.forgetConfirm')))return;
+  try{await post('/api/forget',{});msg(t('c3.forgotten'));}catch(e){msg(e.message,true)}
 };
 
-status();scan();setInterval(status,5000);
+I18N.onChange(()=>{render(cur);fillScan();});
+I18N.ready.then(()=>{status();scan();setInterval(status,5000);});
 </script>
 </body>
 </html>
