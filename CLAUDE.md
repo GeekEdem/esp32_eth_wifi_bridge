@@ -36,6 +36,7 @@ shared/partitions/    4mb_ota.csv: nvs, otadata, ota_0/ota_1 (1.875 MB each), st
 hardware/case/        3D-printed case: build_case.py (manifold3d CSG) -> stl/ in print orientation + check_report.txt;
                       WT32 sizes from the egnor/wt32-eth01 STEP (downloaded by --step, not committed: no license);
                       OLED/USB-C/switch are typical values; every check in the report must be "ok"
+docs/WIRING.md        wiring diagrams (docs/wiring/gen_wiring.py -> SVG) and the first flash
 docs/ARCHITECTURE.md  decisions, stages, open questions
 ```
 

@@ -45,6 +45,8 @@ esptool.py --chip esp32c3 -p /dev/ttyACM0 write_flash 0x0 c3-programmer.bin    #
 
 ## Підключення до WT32
 
+Схема і кроки першої прошивки: [`docs/WIRING_UA.md`](../../docs/WIRING_UA.md).
+
 | C3 SuperMini | WT32-ETH01 | Примітка |
 |---|---|---|
 | GPIO4 (UART1 TX) | RXD (IO3) | |

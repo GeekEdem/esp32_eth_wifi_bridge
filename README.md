@@ -27,12 +27,13 @@ The web page and the display are currently in Ukrainian.
 | [`shared/wifi_setup/`](shared/wifi_setup/) | shared component: Wi-Fi with settings in NVS, setup access point with a captive portal, web API, page password, OTA |
 | [`shared/script_berry/`](shared/script_berry/) | user scripts in Berry: editor on the page, memory and time limits |
 | [`hardware/case/`](hardware/case/) | 3D-printable case (STL + a Python generator checked against the board's 3D model): WT32, display, button, USB-C power |
+| [`docs/WIRING.md`](docs/WIRING.md) | wiring diagrams: programmer → WT32, WT32 with power, display and button; first flash |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | decisions, stages, open questions |
 
 ## Quick start
 
 1. Flash the C3 with `tools/c3-programmer/firmware/c3-programmer.bin` (at address `0x0`) and connect it to Wi-Fi through `C3prog-Setup-XXXX`.
-2. Wire the C3 to the WT32 (see the [programmer README](tools/c3-programmer/README.md)) and flash the WT32:
+2. Wire the C3 to the WT32 (diagrams and the first-flash steps: [`docs/WIRING.md`](docs/WIRING.md)) and flash the WT32:
    ```bash
    esptool.py --chip esp32 -p rfc2217://c3prog.local:4000 write_flash 0x0 wt32/firmware/wt32-bridge.bin
    ```

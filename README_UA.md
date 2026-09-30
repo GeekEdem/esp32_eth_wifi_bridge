@@ -25,12 +25,13 @@
 | [`shared/wifi_setup/`](shared/wifi_setup/) | спільний компонент: Wi-Fi з налаштуваннями в NVS, точка налаштування з captive portal, веб-API, пароль сторінки, OTA |
 | [`shared/script_berry/`](shared/script_berry/) | скрипти користувача на Berry: редактор на сторінці, ліміти памʼяті й часу |
 | [`hardware/case/`](hardware/case/) | корпус для друку (STL + генератор на Python з перевірками проти 3D-моделі плати): WT32, екран, кнопка, живлення USB-C |
+| [`docs/WIRING_UA.md`](docs/WIRING_UA.md) | схеми підключення: програматор → WT32, WT32 з живленням, екраном і кнопкою; перша прошивка |
 | [`docs/ARCHITECTURE_UA.md`](docs/ARCHITECTURE_UA.md) | рішення, етапи, відкриті питання |
 
 ## Швидкий старт
 
 1. Прошити C3 образом `tools/c3-programmer/firmware/c3-programmer.bin` (з адреси `0x0`), підключити його до Wi-Fi через `C3prog-Setup-XXXX`.
-2. З'єднати C3 з WT32 (схема — у [README програматора](tools/c3-programmer/README_UA.md)) і прошити WT32:
+2. З'єднати C3 з WT32 (схеми й перша прошивка: [`docs/WIRING_UA.md`](docs/WIRING_UA.md)) і прошити WT32:
    ```bash
    esptool.py --chip esp32 -p rfc2217://c3prog.local:4000 write_flash 0x0 wt32/firmware/wt32-bridge.bin
    ```

@@ -85,6 +85,8 @@ OLED 0,96″ 128×64 I2C (SSD1306) і одна кнопка. Без них ус�
 
 ## 1. Прошити WT32 через C3
 
+Схеми підключення і перша прошивка крок за кроком: [`docs/WIRING_UA.md`](../docs/WIRING_UA.md).
+
 Підключення C3 ↔ WT32 — див. [`../tools/c3-programmer/README_UA.md`](../tools/c3-programmer/README_UA.md).
 
 ```bash

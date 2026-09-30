@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1060" height="670" viewBox="0 0 1060 670">
+<rect width="1060" height="670" fill="#ffffff"/>
+<text x="530.0" y="30.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="18" text-anchor="middle" font-weight="bold" fill="#222222">WT32-ETH01 in the case: power, display, button</text>
+<rect x="400.0" y="90.0" width="250.0" height="408.0" rx="6" fill="#1f5f3f" stroke="#333333" stroke-width="1.5"/>
+<text x="525.0" y="112.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="bold" fill="#ffffff">WT32-ETH01</text>
+<text x="525.0" y="130.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="middle" font-weight="normal" fill="#e8e8e8">component side up</text>
+<text x="525.0" y="82.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="middle" font-weight="normal" fill="#555555">antenna end</text>
+<text x="525.0" y="514.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="middle" font-weight="normal" fill="#555555">RJ45 end (Ethernet cable to the device)</text>
+<circle cx="414.0" cy="150.0" r="5" fill="#d9d9d9" stroke="#333" stroke-width="1"/>
+<text x="426.0" y="154.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#ffffff">EN</text>
+<circle cx="414.0" cy="176.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<text x="426.0" y="180.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#ffffff">GND</text>
+<circle cx="414.0" cy="202.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<text x="426.0" y="206.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#ffffff">3V3</text>
+<circle cx="414.0" cy="228.0" r="5" fill="#d9d9d9" stroke="#333" stroke-width="1"/>
+<text x="426.0" y="232.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#ffffff">EN</text>
+<circle cx="414.0" cy="254.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<text x="426.0" y="258.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#ffffff">IO32 (CFG)</text>
+<circle cx="414.0" cy="280.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<text x="426.0" y="284.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#ffffff">IO33 (485_EN)</text>
+<circle cx="414.0" cy="306.0" r="5" fill="#d9d9d9" stroke="#333" stroke-width="1"/>
+<text x="426.0" y="310.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#ffffff">IO5 (RXD)</text>
+<circle cx="414.0" cy="332.0" r="5" fill="#d9d9d9" stroke="#333" stroke-width="1"/>
+<text x="426.0" y="336.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#ffffff">IO17 (TXD)</text>
+<circle cx="414.0" cy="358.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<text x="426.0" y="362.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#ffffff">GND</text>
+<circle cx="414.0" cy="384.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<text x="426.0" y="388.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#ffffff">3V3</text>
+<circle cx="414.0" cy="410.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<text x="426.0" y="414.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#ffffff">GND</text>
+<circle cx="414.0" cy="436.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<text x="426.0" y="440.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#ffffff">5V</text>
+<circle cx="414.0" cy="462.0" r="5" fill="#d9d9d9" stroke="#333" stroke-width="1"/>
+<text x="426.0" y="466.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#ffffff">LINK</text>
+<circle cx="636.0" cy="150.0" r="5" fill="#d9d9d9" stroke="#333" stroke-width="1"/>
+<text x="624.0" y="154.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">IO1 (TXD0)</text>
+<circle cx="636.0" cy="176.0" r="5" fill="#d9d9d9" stroke="#333" stroke-width="1"/>
+<text x="624.0" y="180.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">IO3 (RXD0)</text>
+<circle cx="636.0" cy="202.0" r="5" fill="#d9d9d9" stroke="#333" stroke-width="1"/>
+<text x="624.0" y="206.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">IO0</text>
+<circle cx="636.0" cy="228.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<text x="624.0" y="232.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">GND</text>
+<circle cx="636.0" cy="254.0" r="5" fill="#d9d9d9" stroke="#333" stroke-width="1"/>
+<text x="624.0" y="258.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">IO39</text>
+<circle cx="636.0" cy="280.0" r="5" fill="#d9d9d9" stroke="#333" stroke-width="1"/>
+<text x="624.0" y="284.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">IO36</text>
+<circle cx="636.0" cy="306.0" r="5" fill="#d9d9d9" stroke="#333" stroke-width="1"/>
+<text x="624.0" y="310.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">IO15</text>
+<circle cx="636.0" cy="332.0" r="5" fill="#d9d9d9" stroke="#333" stroke-width="1"/>
+<text x="624.0" y="336.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">IO14</text>
+<circle cx="636.0" cy="358.0" r="5" fill="#d9d9d9" stroke="#333" stroke-width="1"/>
+<text x="624.0" y="362.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">IO12</text>
+<circle cx="636.0" cy="384.0" r="5" fill="#d9d9d9" stroke="#333" stroke-width="1"/>
+<text x="624.0" y="388.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">IO35</text>
+<circle cx="636.0" cy="410.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<text x="624.0" y="414.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">IO4</text>
+<circle cx="636.0" cy="436.0" r="5" fill="#d9d9d9" stroke="#333" stroke-width="1"/>
+<text x="624.0" y="440.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">IO2</text>
+<circle cx="636.0" cy="462.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<text x="624.0" y="466.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">GND</text>
+<rect x="60.0" y="340.0" width="170.0" height="90.0" rx="6" fill="#555555" stroke="#333333" stroke-width="1.5"/>
+<text x="145.0" y="362.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" text-anchor="middle" font-weight="bold" fill="#ffffff">USB-C breakout</text>
+<text x="145.0" y="378.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="middle" font-weight="normal" fill="#e8e8e8">5 V power only</text>
+<circle cx="215.0" cy="395.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<text x="203.0" y="399.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">GND</text>
+<circle cx="215.0" cy="418.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<text x="203.0" y="422.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">VBUS / 5V</text>
+<path d="M215.0 418.0 L345.0 418.0 L345.0 436.0 L414.0 436.0" fill="none" stroke="#d62728" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M215.0 395.0 L330.0 395.0 L330.0 410.0 L414.0 410.0" fill="none" stroke="#222222" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="60.0" y="110.0" width="200.0" height="150.0" rx="6" fill="#2b3a8f" stroke="#333333" stroke-width="1.5"/>
+<text x="160.0" y="132.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" text-anchor="middle" font-weight="bold" fill="#ffffff">OLED 0.96" SSD1306</text>
+<text x="160.0" y="148.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="middle" font-weight="normal" fill="#e8e8e8">I2C, address 0x3C / 0x3D</text>
+<circle cx="245.0" cy="175.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<text x="233.0" y="179.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">GND</text>
+<circle cx="245.0" cy="197.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<text x="233.0" y="201.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">VCC</text>
+<circle cx="245.0" cy="219.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<text x="233.0" y="223.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">SCL</text>
+<circle cx="245.0" cy="241.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<text x="233.0" y="245.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="end" font-weight="normal" fill="#ffffff">SDA</text>
+<path d="M245.0 197.0 L300.0 197.0 L300.0 202.0 L414.0 202.0" fill="none" stroke="#ff7f0e" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M245.0 175.0 L285.0 175.0 L285.0 168.0 L380.0 168.0 L380.0 176.0 L414.0 176.0" fill="none" stroke="#222222" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M245.0 241.0 L360.0 241.0 L360.0 254.0 L414.0 254.0" fill="none" stroke="#17becf" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M245.0 219.0 L315.0 219.0 L315.0 280.0 L414.0 280.0" fill="none" stroke="#8c564b" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="800.0" y="400.0" width="120.0" height="80.0" rx="6" fill="#444444" stroke="#333333" stroke-width="1.5"/>
+<text x="860.0" y="424.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" text-anchor="middle" font-weight="bold" fill="#ffffff">Button</text>
+<text x="860.0" y="440.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" text-anchor="middle" font-weight="normal" fill="#e8e8e8">6x6 tactile</text>
+<circle cx="815.0" cy="460.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<circle cx="905.0" cy="460.0" r="5" fill="#f5c518" stroke="#333" stroke-width="1"/>
+<path d="M636.0 410.0 L696.0 410.0 L696.0 460.0 L815.0 460.0" fill="none" stroke="#9467bd" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M636.0 462.0 L676.0 462.0 L676.0 500.0 L905.0 500.0 L905.0 460.0" fill="none" stroke="#222222" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M60.0 500.0 L90.0 500.0" fill="none" stroke="#d62728" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="100.0" y="504.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">USB-C 5V  →  WT32 5V</text>
+<path d="M60.0 522.0 L90.0 522.0" fill="none" stroke="#222222" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="100.0" y="526.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">GND  —  GND (any GND pin)</text>
+<path d="M60.0 544.0 L90.0 544.0" fill="none" stroke="#ff7f0e" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="100.0" y="548.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">OLED VCC  →  WT32 3V3   (not 5V)</text>
+<path d="M60.0 566.0 L90.0 566.0" fill="none" stroke="#17becf" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="100.0" y="570.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">OLED SDA  →  WT32 IO32 (CFG)</text>
+<path d="M60.0 588.0 L90.0 588.0" fill="none" stroke="#8c564b" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="100.0" y="592.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">OLED SCL  →  WT32 IO33 (485_EN)</text>
+<path d="M60.0 610.0 L90.0 610.0" fill="none" stroke="#9467bd" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="100.0" y="614.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">Button  →  WT32 IO4 (other leg to GND)</text>
+<text x="700.0" y="550.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="bold" fill="#222222">OLED pin order differs between modules</text>
+<text x="700.0" y="572.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">(GND-VCC-SCL-SDA or VCC-GND-SCL-SDA):</text>
+<text x="700.0" y="594.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">wire by the names printed on yours.</text>
+<text x="700.0" y="616.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">Display and button are optional;</text>
+<text x="700.0" y="638.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">the firmware runs without them.</text>
+</svg>

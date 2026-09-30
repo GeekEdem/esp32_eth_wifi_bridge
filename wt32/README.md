@@ -85,6 +85,8 @@ The Firmware update section («Оновлення прошивки») of the pag
 
 ## 1. Flash the WT32 via the C3
 
+Wiring diagrams and the first flash step by step: [`docs/WIRING.md`](../docs/WIRING.md).
+
 C3 ↔ WT32 wiring — see [`../tools/c3-programmer/README.md`](../tools/c3-programmer/README.md).
 
 ```bash

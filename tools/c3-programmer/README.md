@@ -45,6 +45,8 @@ In the "Firmware update" section («Оновлення прошивки») of th
 
 ## Wiring to the WT32
 
+Diagram and first-flash steps: [`docs/WIRING.md`](../../docs/WIRING.md).
+
 | C3 SuperMini | WT32-ETH01 | Note |
 |---|---|---|
 | GPIO4 (UART1 TX) | RXD (IO3) | |
