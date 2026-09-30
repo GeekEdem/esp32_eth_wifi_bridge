@@ -52,7 +52,7 @@ cd wt32 && ./build_firmware.sh                  # -> wt32/firmware/wt32-bridge.b
 cd tools/c3-programmer && ./build_firmware.sh   # -> firmware/c3-programmer.bin
 ```
 
-Prebuilt images are committed in each project's `firmware/`: `<name>.bin` (merged, flash at 0x0 over serial) and `<name>-ota.bin` (app only, for the web update). Rebuild them when the code changes, and bump `PROJECT_VER` for releases. The page shows the source commit (`git describe --always --dirty` at configure time): commit the code first, then build the images from a clean checkout of that commit (e.g. `git worktree add`), so the images do not say `-dirty` or `unknown`; commit the images afterwards.
+Prebuilt images are committed in each project's `firmware/`: `<name>.bin` (merged, flash at 0x0 over serial) and `<name>-ota.bin` (app only, for the web update). Rebuild them when the code changes, and bump `PROJECT_VER` for releases. The page shows the source commit (`git describe --always --dirty` at configure time): commit the code first, then build the images from a clean checkout of that commit (e.g. `git worktree add`), so the images do not say `-dirty` or `unknown` (the first project's new images make the tree dirty: `git checkout -- .` before building the second); commit the images afterwards.
 
 ## Tests
 
