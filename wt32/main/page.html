@@ -86,6 +86,7 @@ code{font-size:13px;word-break:break-all;background:var(--bg);padding:2px 6px;bo
 <tr><td data-i18n="page.dropWifi">Dropped: Wi-Fi not connected</td><td id="dropWifiDown">…</td></tr>
 <tr><td data-i18n="page.dropEth">Dropped: no Ethernet</td><td id="dropEthDown">…</td></tr>
 <tr><td data-i18n="page.txErr">Transmit errors Wi-Fi / Ethernet</td><td id="txErr">…</td></tr>
+<tr><td data-i18n="page.txWait">Waited for Wi-Fi (its buffers were full)</td><td id="txWait">…</td></tr>
 <tr><td data-i18n="page.foreign">Frames from a second device</td><td id="foreign">…</td></tr>
 <tr><td data-i18n="page.ipv6">IPv6 dropped</td><td id="ipv6Dropped">…</td></tr>
 <tr><td data-i18n="page.dhcpRw">DHCP rewrites</td><td id="dhcpRewrites">…</td></tr>
@@ -170,13 +171,14 @@ function showMode(m){
 }
 document.querySelectorAll('input[name=mode]').forEach(r=>r.onchange=()=>showMode(r.value));
 
-const link=on=>on?t('page.link'):t('page.noLink');
+const link=s=>!s.eth?t('page.noLink'):s.ethLink?t('page.linkInfo',{speed:s.ethLink.speed,
+  duplex:t(s.ethLink.full?'page.duplexFull':'page.duplexHalf')}):t('page.link');
 
 function renderClient(s){
   if(s.state==='connected')set('wifi',t('page.wifiConnected',{ssid:s.ssid,rssi:s.rssi}),'ok');
   else if(s.state==='connecting')set('wifi',t('page.wifiConnecting',{ssid:s.ssid}),'bad');
   else set('wifi',t('page.wifiNone'),'bad');
-  set('eth',link(s.eth),s.eth?'ok':'bad');
+  set('eth',link(s),s.eth?'ok':'bad');
   set('devMac',s.devMac||t('page.notSeen'),s.devMac?'':'mute');
   const reach=s.mgmtReach!==false;
   set('devIp',s.devIp?s.devIp+t(s.devLease?'page.ipDhcp':'page.ipStatic'):t('page.notSeen'),s.devIp?(reach?'ok':'bad'):'mute');
@@ -190,6 +192,7 @@ function renderClient(s){
   set('toEth',t('page.frames',{n:s.toEth[0],size:size(s.toEth[1])}));
   set('dropWifiDown',s.dropWifiDown);set('dropEthDown',s.dropEthDown);
   set('txErr',`${s.txErrWifi} / ${s.txErrEth}`,(s.txErrWifi||s.txErrEth)?'bad':'');
+  set('txWait',s.txWaitWifi||0);
   set('foreign',s.foreign,s.foreign?'bad':'');
   set('ipv6Dropped',s.ipv6Dropped);set('dhcpRewrites',s.dhcpRewrites);
   set('mgmtFrames',`${s.mgmtFrames[0]} / ${s.mgmtFrames[1]}`+(s.mgmtTxErr?t('page.errors',{n:s.mgmtTxErr}):''),s.mgmtTxErr?'bad':'');
@@ -219,7 +222,7 @@ function renderOwn(s){
   if(!s.dhcp||!s.dhcp.length){const tr=document.createElement('tr');const td=document.createElement('td');td.className='mute';td.textContent=t('page.noLeases');tr.append(td);tb.append(tr);}
   else s.dhcp.forEach(l=>tb.append(leaseRow(l,s.devMac)));
   set('ownSsid',s.own.ssid);set('ownIp',s.ownIp);
-  set('ownEth',link(s.eth),s.eth?'ok':'bad');
+  set('ownEth',link(s),s.eth?'ok':'bad');
   set('ownDevMac',s.devMac||t('page.notSeen'),s.devMac?'':'mute');
   set('ownDevIp',s.devIp||(s.devMac?t('page.waitDhcp'):t('page.notSeen')),s.devIp?'ok':'mute');
   set('apClients',s.apClients);
@@ -233,7 +236,7 @@ function renderAp(s){
     a.append(s.uplink==='fallback'?t('page.fallback'):t('page.fromRouter'));if(s.uplink==='fallback')a.className='bad';}
   else{a.textContent=t('page.waitDhcp');a.className='mute';}
   set('apGw',s.gw||'—',s.gw?'':'mute');
-  set('apEth',link(s.eth),s.eth?'ok':'bad');
+  set('apEth',link(s),s.eth?'ok':'bad');
   set('apCl',s.apClients);
   $('hint').textContent=s.uplink==='fallback'?t('page.checkCable'):'';
 }

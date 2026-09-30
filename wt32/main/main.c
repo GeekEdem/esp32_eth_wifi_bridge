@@ -78,7 +78,7 @@ static void report_client(void)
     ip4_addr_t mgmt = { .addr = s.mgmt_ip };
     ESP_LOGI(TAG, "client | wifi %s rssi %d | eth %s | device " MACSTR " " IPSTR " (%s)"
              " | ->wifi %lu fr / %lu B, ->eth %lu fr / %lu B | drops wifi %lu eth %lu, "
-             "tx err %lu/%lu, foreign %lu, ipv6 %lu, dhcp rw %lu | mgmt " IPSTR ":%d "
+             "tx err %lu/%lu (last %s), waited for wifi %lu, foreign %lu, ipv6 %lu, dhcp rw %lu | mgmt " IPSTR ":%d "
              "rx %lu tx %lu err %lu flows %d%s",
              s.wifi_up ? "up" : "down", wifi_setup_rssi(), s.eth_up ? "up" : "down",
              MAC2STR(s.dev_mac), IP2STR(&ip), s.dev_ip_leased ? "DHCP" : "static",
@@ -86,6 +86,7 @@ static void report_client(void)
              (unsigned long)s.to_eth_frames, (unsigned long)s.to_eth_bytes,
              (unsigned long)s.drop_wifi_down, (unsigned long)s.drop_eth_down,
              (unsigned long)s.tx_err_wifi, (unsigned long)s.tx_err_eth,
+             s.tx_err_wifi_last ? esp_err_to_name(s.tx_err_wifi_last) : "-", (unsigned long)s.tx_wait_wifi,
              (unsigned long)s.foreign_frames, (unsigned long)s.ipv6_dropped,
              (unsigned long)s.dhcp_rewrites, IP2STR(&mgmt), CONFIG_WT32_MGMT_PORT,
              (unsigned long)s.mgmt_rx_frames, (unsigned long)s.mgmt_tx_frames,

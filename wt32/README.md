@@ -193,7 +193,10 @@ If something does not work, attach the filled-in tables, screenshots of the page
 - "Dropped: Wi-Fi not connected" grows — the WT32 cannot hold Wi-Fi (check RSSI);
 - "Frames from a second device" > 0 — more than one device on Ethernet (a switch?) — only one is supported;
 - "DHCP rewrites" = 0 and no IP — the device does not send DHCP (a static IP from another subnet?);
-- "Transmit errors Wi-Fi / Ethernet" grow — open an issue with the UART log.
+- "Waited for Wi-Fi" grows under load — normal: the device sends faster than Wi-Fi carries, so the WT32 holds its frames (up to 50 ms each) and, if the device supports it, slows it down with Ethernet PAUSE frames (flow control, see the `eth: link up …` line in the log) instead of dropping them;
+- "Transmit errors Wi-Fi / Ethernet" grow — frames dropped after all; the UART summary gives the reason (`last ESP_ERR_NO_MEM` = Wi-Fi was still full after 50 ms). With flow control off (the device does not take PAUSE frames), some loss under a sustained flood is expected; otherwise open an issue with the UART log.
+
+**Ethernet LEDs**: the LAN8720 drives them by itself, the firmware cannot. On the WT32-ETH01 one blinks with link and traffic; the other is most likely wired to the LAN8720's speed output (LED2), which lights at 100 Mbit/s only. The log line `eth: link up: 100 Mbit/s, full duplex, flow control on` and the Ethernet row on the page show what was negotiated: if they say 100 Mbit/s and that LED stays dark, it is the board, not the firmware; if they say 10 Mbit/s or half duplex, try another cable (or the device is 10 Mbit/s only).
 
 ## Building from source
 

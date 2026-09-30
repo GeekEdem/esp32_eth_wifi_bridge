@@ -20,7 +20,7 @@ CLIENT = {"state":"connected","ssid":"Home","host":"wt32","apSsid":"WT32-Setup-1
  "version":"0.1.0","wifiUp":True,"eth":True,"devMac":"00:11:22:33:44:55","devIp":"192.168.1.50","toWifi":[10,1000],
  "toEth":[12,1400],"dropWifiDown":0,"dropEthDown":0,"txErrWifi":0,"txErrEth":0,"foreign":0,"ipv6Dropped":0,
  "dhcpRewrites":4,"mgmtIp":"192.168.1.50","mgmtPort":28480,"mgmtFrames":[3,4],"mgmtTxErr":0,"mgmtFlows":1,"mgmtEvictions":0,
- "mgmtReach":True,"devLease":True}
+ "mgmtReach":True,"devLease":True,"txWaitWifi":120,"ethLink":{"speed":100,"full":True,"pause":True}}
 OWN = {"state":"setup","ssid":"","host":"","apSsid":"","ap":False,"ip":"","rssi":0,"version":"0.1.0",
  "eth":True,"apClients":1,"devMac":"00:11:22:33:44:55","devIp":"192.168.77.100"}
 AP = {"state":"setup","ssid":"","host":"","apSsid":"","ap":False,"ip":"","rssi":0,"version":"0.1.0",

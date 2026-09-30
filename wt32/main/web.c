@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "client_mode.h"
+#include "eth.h"
 #include "dhcp_server.h"
 #include "esp_mac.h"
 #include "lwip/ip4_addr.h"
@@ -50,6 +51,12 @@ size_t web_status_extra(char *buf, size_t pos, size_t cap)
     char mac[18] = "", ip[16], mgmt[16];
     if (s_setup_boot) {
         pos = setup_portal_appendf(buf, pos, cap, ",\"setupBoot\":true");
+    }
+    wt32_eth_link_t link;
+    eth_link_get(&link);
+    if (link.up) {
+        pos = setup_portal_appendf(buf, pos, cap, ",\"ethLink\":{\"speed\":%d,\"full\":%s,\"pause\":%s}",
+                                   link.speed_mbps, link.full_duplex ? "true" : "false", link.pause ? "true" : "false");
     }
     if (s_set.mode == WT32_MODE_AP) {
         static const char *const UPLINK[] = { "", "waiting", "dhcp", "fallback" };
@@ -90,7 +97,7 @@ size_t web_status_extra(char *buf, size_t pos, size_t cap)
         "\"dropWifiDown\":%lu,\"dropEthDown\":%lu,\"txErrWifi\":%lu,\"txErrEth\":%lu,"
         "\"foreign\":%lu,\"ipv6Dropped\":%lu,\"dhcpRewrites\":%lu,"
         "\"mgmtIp\":\"%s\",\"mgmtPort\":%d,\"mgmtFrames\":[%lu,%lu],\"mgmtTxErr\":%lu,"
-        "\"mgmtFlows\":%d,\"mgmtEvictions\":%lu,\"mgmtReach\":%s,\"devLease\":%s",
+        "\"mgmtFlows\":%d,\"mgmtEvictions\":%lu,\"mgmtReach\":%s,\"devLease\":%s,\"txWaitWifi\":%lu",
         s.wifi_up ? "true" : "false", s.eth_up ? "true" : "false", mac, ip,
         (unsigned long)s.to_wifi_frames, (unsigned long)s.to_wifi_bytes,
         (unsigned long)s.to_eth_frames, (unsigned long)s.to_eth_bytes,
@@ -100,7 +107,7 @@ size_t web_status_extra(char *buf, size_t pos, size_t cap)
         (unsigned long)s.dhcp_rewrites,
         mgmt, CONFIG_WT32_MGMT_PORT, (unsigned long)s.mgmt_rx_frames, (unsigned long)s.mgmt_tx_frames,
         (unsigned long)s.mgmt_tx_err, s.mgmt_flows, (unsigned long)s.mgmt_evictions,
-        s.mgmt_reachable ? "true" : "false", s.dev_ip_leased ? "true" : "false");
+        s.mgmt_reachable ? "true" : "false", s.dev_ip_leased ? "true" : "false", (unsigned long)s.tx_wait_wifi);
     return own_settings_json(buf, pos, cap);
 }
 

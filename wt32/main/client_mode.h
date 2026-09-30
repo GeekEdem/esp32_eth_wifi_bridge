@@ -16,7 +16,9 @@ typedef struct {
     uint32_t to_wifi_frames, to_wifi_bytes;
     uint32_t to_eth_frames, to_eth_bytes;
     uint32_t drop_wifi_down, drop_eth_down;
-    uint32_t tx_err_wifi, tx_err_eth;
+    uint32_t tx_err_wifi, tx_err_eth;   /* frames dropped: the driver refused them */
+    uint32_t tx_wait_wifi;              /* frames that waited for free Wi-Fi TX buffers */
+    int tx_err_wifi_last;               /* esp_err_t of the last refused frame (0 = none) */
     uint32_t foreign_frames, ipv6_dropped, dhcp_rewrites;
     uint32_t mgmt_ip;           /* shared management address, 0 = none yet */
     bool mgmt_reachable;        /* it works on the Wi-Fi network (else the setup AP stays up) */

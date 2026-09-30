@@ -47,7 +47,13 @@ static esp_netif_ip_info_t s_mgmt_ip;       /* as applied to the netif */
 static volatile bool s_mgmt_reachable;      /* the address works on the Wi-Fi network */
 static volatile bool s_mgmt_from_lease;
 
+/* Wi-Fi TX buffers full: how many ticks (10 ms) a frame from the device may
+ * wait for the driver before it is dropped. */
+#define WIFI_TX_WAIT_TICKS  5
+
 static struct {
+    uint32_t wifi_tx_waits;                 /* frames that had to wait for Wi-Fi */
+    esp_err_t wifi_tx_last_err;
     uint32_t to_wifi_frames, to_wifi_bytes;
     uint32_t to_eth_frames, to_eth_bytes;
     uint32_t drop_wifi_down, drop_eth_down;
@@ -58,6 +64,26 @@ static struct {
 static inline uint32_t now_ms(void)
 {
     return (uint32_t)(esp_timer_get_time() / 1000);
+}
+
+/* Hands a frame from the device to the station. When the Wi-Fi driver's TX
+ * buffers are full, waits for it to send some instead of dropping the frame:
+ * meanwhile the EMAC's RX descriptors fill up and it sends PAUSE frames to the
+ * device (flow control, eth.c), so a fast sender slows down to the Wi-Fi rate. */
+static esp_err_t wifi_tx_from_device(uint8_t *buf, uint32_t len)
+{
+    esp_err_t err = esp_wifi_internal_tx(WIFI_IF_STA, buf, len);
+    if (err == ESP_ERR_NO_MEM) {
+        s_st.wifi_tx_waits++;
+        for (int i = 0; i < WIFI_TX_WAIT_TICKS && err == ESP_ERR_NO_MEM && s_wifi_up; i++) {
+            vTaskDelay(1);
+            err = esp_wifi_internal_tx(WIFI_IF_STA, buf, len);
+        }
+    }
+    if (err != ESP_OK) {
+        s_st.wifi_tx_last_err = err;
+    }
+    return err;
 }
 
 /* Device -> Wi-Fi (EMAC RX task). */
@@ -78,7 +104,7 @@ static esp_err_t eth_input(esp_eth_handle_t eth, uint8_t *buf, uint32_t len, voi
     if (v == L2RW_FORWARD) {
         if (!s_wifi_up) {
             s_st.drop_wifi_down++;
-        } else if (esp_wifi_internal_tx(WIFI_IF_STA, buf, len) == ESP_OK) {
+        } else if (wifi_tx_from_device(buf, len) == ESP_OK) {
             s_st.to_wifi_frames++;
             s_st.to_wifi_bytes += len;
         } else {
@@ -304,6 +330,8 @@ void client_mode_get_stats(client_stats_t *out)
     out->drop_eth_down = s_st.drop_eth_down;
     out->tx_err_wifi = s_st.tx_err_wifi;
     out->tx_err_eth = s_st.tx_err_eth;
+    out->tx_wait_wifi = s_st.wifi_tx_waits;
+    out->tx_err_wifi_last = s_st.wifi_tx_last_err;
     out->foreign_frames = s_rw.foreign_frames;
     out->ipv6_dropped = s_rw.ipv6_dropped;
     out->dhcp_rewrites = s_rw.dhcp_rewrites;

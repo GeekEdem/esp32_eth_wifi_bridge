@@ -17,6 +17,8 @@ const assert = require('assert');
   await p.waitForFunction(() => document.getElementById('devIp').textContent.startsWith('192.168.1.50'));
   assert(await p.isVisible('#tblClient') && !(await p.isVisible('#tblOwn')) && await p.isVisible('#traffic'));
   assert(await p.isChecked('input[value=client]') && await p.isVisible('#cfgClient'));
+  assert.strictEqual(await p.textContent('#eth'), 'link up, 100 Mbit/s, full duplex');
+  assert.strictEqual(await p.textContent('#txWait'), '120');
 
   // switch to own: short password is refused on the page
   await p.check('input[value=own]');
