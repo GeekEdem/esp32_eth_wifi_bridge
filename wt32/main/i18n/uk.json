@@ -33,6 +33,8 @@
   "page.errors": " (помилок {n})",
   "page.evicted": " (витіснено {n})",
   "page.fallback": " (запасна: на кабелі немає DHCP)",
+  "page.flowOff": ", без керування потоком",
+  "page.flowOn": ", з керуванням потоком",
   "page.foreign": "Кадри від другого пристрою",
   "page.forgetConfirm": "Забути мережу Wi-Fi клієнта? WT32 перезапуститься.",
   "page.forgetWifi": "Забути Wi-Fi клієнта",

@@ -244,9 +244,20 @@ static void network_lines(const ui_info_t *in, lines_t l)
     }
 }
 
+void ui_eth_line(char *buf, size_t len, const ui_info_t *in)
+{
+    if (!in->eth_up) {
+        snprintf(buf, len, "Ethernet: немає лінку");
+    } else if (in->eth_speed) {
+        snprintf(buf, len, "Ethernet: %dМ %s", in->eth_speed, in->eth_full ? "повний" : "напів");
+    } else {
+        snprintf(buf, len, "Ethernet: є лінк");
+    }
+}
+
 static void device_lines(const ui_info_t *in, lines_t l)
 {
-    snprintf(l[0], LINE_LEN, "Ethernet: %s", in->eth_up ? "є лінк" : "немає лінку");
+    ui_eth_line(l[0], LINE_LEN, in);
     snprintf(l[1], LINE_LEN, "MAC пристрою:");
     if (in->dev_known) {
         const uint8_t *m = in->dev_mac;
@@ -265,7 +276,7 @@ static void device_lines(const ui_info_t *in, lines_t l)
 static void cable_lines(const ui_info_t *in, lines_t l)
 {
     static const char *const UPLINK[] = { "—", "чекаю…", "працює", "немає (запасна IP)" };
-    snprintf(l[0], LINE_LEN, "Ethernet: %s", in->eth_up ? "є лінк" : "немає лінку");
+    ui_eth_line(l[0], LINE_LEN, in);
     snprintf(l[1], LINE_LEN, "DHCP роутера:");
     snprintf(l[2], LINE_LEN, "%s", UPLINK[in->uplink <= UI_UPLINK_FALLBACK ? in->uplink : 0]);
     snprintf(l[3], LINE_LEN, "Шлюз:");

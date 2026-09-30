@@ -63,7 +63,7 @@ A 0.96″ 128×64 I2C OLED (SSD1306) and one button. Everything works without th
 | Button | between **IO4** and GND (internal pull-up, no resistor needed) |
 
 - The display is detected automatically at address 0x3C or 0x3D (in the log: `SSD1306 at 0x3C`). It turns off after 60 s without a press (an OLED burns in from a static image).
-- Pages: **Network** («Мережа»: mode, Wi-Fi, WT32 page address), **Device** («Пристрій»: Ethernet, MAC, IP; in Access point mode — **Cable** («Кабель»): router DHCP, gateway), **Traffic** («Трафік», Client), **Script** («Скрипт»: the script's first 5 `output()` values, if any), **System** («Система»: version, memory, uptime).
+- Pages: **Network** («Мережа»: mode, Wi-Fi, WT32 page address), **Device** («Пристрій»: Ethernet with the negotiated speed and duplex, e.g. `Ethernet: 100М повний`, MAC, IP; in Access point mode — **Cable** («Кабель»): Ethernet, router DHCP, gateway), **Traffic** («Трафік», Client), **Script** («Скрипт»: the script's first 5 `output()` values, if any), **System** («Система»: version, memory, uptime).
 - **Button** (acts on release; while you hold it, the display shows what will happen):
   - short — turn the display on / next page;
   - **5 s** — one-time setup start: the WT32 restarts in Client mode with the `WT32-Setup-XXXX` access point (http://192.168.4.1). The saved mode is not changed: after the next restart the WT32 returns to it, unless something else has been saved on the page;

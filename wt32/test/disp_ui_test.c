@@ -92,12 +92,30 @@ int main(int argc, char **argv)
 
     ui_info_t in;
     memset(&in, 0, sizeof(in));
+
+    /* the Ethernet line: negotiated speed and duplex, within one line */
+    {
+        char b[96];
+        ui_eth_line(b, sizeof(b), &in);
+        assert(!strcmp(b, "Ethernet: немає лінку"));
+        in.eth_up = true;
+        ui_eth_line(b, sizeof(b), &in);
+        assert(!strcmp(b, "Ethernet: є лінк"));          /* up, details not read yet */
+        in.eth_speed = 100; in.eth_full = true;
+        ui_eth_line(b, sizeof(b), &in);
+        assert(!strcmp(b, "Ethernet: 100М повний") && ui_utf8_len(b) <= UI_COLS);
+        in.eth_speed = 10; in.eth_full = false;
+        ui_eth_line(b, sizeof(b), &in);
+        assert(!strcmp(b, "Ethernet: 10М напів") && ui_utf8_len(b) <= UI_COLS);
+        memset(&in, 0, sizeof(in));
+    }
     strcpy(in.version, "0.7.0");
     in.heap = 91234; in.uptime_s = 93784; in.mgmt_port = 28480;
 
     /* client: connected, device known */
     in.mode = UI_CLIENT; in.wifi_state = 2; strcpy(in.wifi_ssid, "Домашня мережа 5G"); in.rssi = -57;
     in.mgmt_ip = in.dev_ip = ip(192, 168, 1, 50); in.eth_up = true; in.dev_known = true;
+    in.eth_speed = 100; in.eth_full = true;
     memcpy(in.dev_mac, "\x00\x11\x22\x33\x44\x55", 6);
     in.to_wifi_bytes = 3456789; in.to_eth_bytes = 51200; in.dropped = 3; in.tx_errors = 0; in.foreign = 0;
     assert(ui_page_count(&in) == 4);

@@ -172,7 +172,7 @@ function showMode(m){
 document.querySelectorAll('input[name=mode]').forEach(r=>r.onchange=()=>showMode(r.value));
 
 const link=s=>!s.eth?t('page.noLink'):s.ethLink?t('page.linkInfo',{speed:s.ethLink.speed,
-  duplex:t(s.ethLink.full?'page.duplexFull':'page.duplexHalf')}):t('page.link');
+  duplex:t(s.ethLink.full?'page.duplexFull':'page.duplexHalf')})+(s.ethLink.full?t(s.ethLink.pause?'page.flowOn':'page.flowOff'):''):t('page.link');
 
 function renderClient(s){
   if(s.state==='connected')set('wifi',t('page.wifiConnected',{ssid:s.ssid,rssi:s.rssi}),'ok');

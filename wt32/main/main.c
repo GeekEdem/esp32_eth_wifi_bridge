@@ -126,6 +126,10 @@ static void fill_info(ui_info_t *in)
                              in->out_val[in->n_out], sizeof(in->out_val[0]))) {
         in->n_out++;
     }
+    wt32_eth_link_t link;
+    eth_link_get(&link);
+    in->eth_speed = link.up ? link.speed_mbps : 0;
+    in->eth_full = link.full_duplex;
     if (s_mode == WT32_MODE_CLIENT) {
         client_stats_t s;
         client_mode_get_stats(&s);

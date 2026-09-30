@@ -51,6 +51,8 @@ typedef struct {
     ui_uplink_t uplink;
     /* the device on the cable (client / router) */
     bool eth_up;
+    int eth_speed;                      /* negotiated Mbit/s, 0 = not known */
+    bool eth_full;                      /* full duplex */
     bool dev_known;
     uint8_t dev_mac[6];
     uint32_t dev_ip;
@@ -71,6 +73,9 @@ void ui_render_page(uint8_t *fb, const ui_info_t *in, int index);
 void ui_render_hold(uint8_t *fb, uint32_t held_ms);
 /* A full-screen message: title bar and up to three lines (NULL = empty). */
 void ui_render_notice(uint8_t *fb, const char *title, const char *l1, const char *l2, const char *l3);
+
+/* The Ethernet line of the device / cable page, e.g. "Ethernet: 100М повний". */
+void ui_eth_line(char *buf, size_t len, const ui_info_t *in);
 
 /* Primitives (exported for the tests). */
 size_t ui_utf8_next(const char *s, uint32_t *cp);       /* bytes used; 0 at the end */

@@ -33,6 +33,8 @@
   "page.errors": " ({n} errors)",
   "page.evicted": " ({n} evicted)",
   "page.fallback": " (fallback: no DHCP on the cable)",
+  "page.flowOff": ", no flow control",
+  "page.flowOn": ", flow control",
   "page.foreign": "Frames from a second device",
   "page.forgetConfirm": "Forget the client Wi-Fi network? The WT32 will restart.",
   "page.forgetWifi": "Forget client Wi-Fi",
