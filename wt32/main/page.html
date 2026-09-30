@@ -178,11 +178,14 @@ function renderClient(s){
   else set('wifi',t('page.wifiNone'),'bad');
   set('eth',link(s.eth),s.eth?'ok':'bad');
   set('devMac',s.devMac||t('page.notSeen'),s.devMac?'':'mute');
-  set('devIp',s.devIp||t('page.notSeen'),s.devIp?'ok':'mute');
+  const reach=s.mgmtReach!==false;
+  set('devIp',s.devIp?s.devIp+t(s.devLease?'page.ipDhcp':'page.ipStatic'):t('page.notSeen'),s.devIp?(reach?'ok':'bad'):'mute');
   const m=$('mgmt');m.textContent='';m.className='';
-  if(s.mgmtIp){const a=document.createElement('a');a.href=`http://${s.mgmtIp}:${s.mgmtPort}/`;a.textContent=`${s.mgmtIp}:${s.mgmtPort}`;m.append(a);}
+  if(s.mgmtIp){const a=document.createElement('a');a.href=`http://${s.mgmtIp}:${s.mgmtPort}/`;a.textContent=`${s.mgmtIp}:${s.mgmtPort}`;m.append(a);
+    if(!reach){m.append(t('page.otherNet'));m.className='bad';}}
   else{m.textContent=t('page.afterIp');m.className='mute';}
-  $('hint').textContent=s.devIp?t('page.devReachable',{ip:s.devIp}):(s.ap?t('page.viaSetup',{ap:s.apSsid}):'');
+  $('hint').textContent=s.devIp&&!reach?t('page.devOtherNet',{ip:s.devIp,ap:s.apSsid}):
+    s.devIp?t('page.devReachable',{ip:s.devIp}):(s.ap?t('page.viaSetup',{ap:s.apSsid}):'');
   set('toWifi',t('page.frames',{n:s.toWifi[0],size:size(s.toWifi[1])}));
   set('toEth',t('page.frames',{n:s.toEth[0],size:size(s.toEth[1])}));
   set('dropWifiDown',s.dropWifiDown);set('dropEthDown',s.dropEthDown);

@@ -14,7 +14,7 @@ const assert = require('assert');
   await p.waitForSelector('#loginOv', { state: 'detached' });
 
   // client mode status
-  await p.waitForFunction(() => document.getElementById('devIp').textContent === '192.168.1.50');
+  await p.waitForFunction(() => document.getElementById('devIp').textContent.startsWith('192.168.1.50'));
   assert(await p.isVisible('#tblClient') && !(await p.isVisible('#tblOwn')) && await p.isVisible('#traffic'));
   assert(await p.isChecked('input[value=client]') && await p.isVisible('#cfgClient'));
 
@@ -80,6 +80,16 @@ const assert = require('assert');
   assert.deepStrictEqual(l.slice(-2), [
     '/api/mode {"mode":"client","restart":"0"}',
     '/api/wifi {"ssid":"Home","pass":"homepass1"}']);
+
+  // a static address from another network: said on the page, the setup AP stays on
+  await fetch(`${base}/_restart`);
+  await p.reload();
+  await p.waitForFunction(() => document.getElementById('devIp').textContent === '192.168.1.50 (DHCP)');
+  await fetch(`${base}/_othernet`);
+  await p.waitForFunction(() => document.getElementById('hint').textContent.includes('static address, 192.168.1.77'));
+  assert((await p.textContent('#devIp')).includes('192.168.1.77 (static)'));
+  assert((await p.textContent('#mgmt')).includes('another network'));
+  assert((await p.textContent('#hint')).includes('WT32-Setup-1A2B'));
 
   // one-time setup start from the button: the page says so
   assert(!(await p.textContent('#hint')).includes('One-time'));

@@ -42,8 +42,84 @@ void l2rw_forget(l2rw_t *st)
 {
     st->dev_known = false;
     memset(st->dev_mac, 0, 6);
-    st->dev_ip = 0;
+    st->dev_ip = st->cand_ip = 0;
+    st->net_seen = false;
     st->lease_ip = st->lease_mask = st->lease_gw = st->lease_dns = 0;
+}
+
+/* A unicast host address: not 0, broadcast, loopback, multicast or link-local. */
+static bool host_ip(uint32_t ip)
+{
+    uint8_t b[4];
+    memcpy(b, &ip, 4);
+    return ip != 0 && ip != 0xFFFFFFFFu && b[0] != 0 && b[0] != 127 && b[0] < 224 &&
+           !(b[0] == 169 && b[1] == 254);
+}
+
+static uint32_t dev_mask(const l2rw_t *st)
+{
+    if (st->lease_ip && st->lease_ip == st->dev_ip && st->lease_mask) {
+        return st->lease_mask;
+    }
+    static const uint8_t m24[4] = { 255, 255, 255, 0 };
+    uint32_t m;
+    memcpy(&m, m24, 4);
+    return m;
+}
+
+static void set_dev_ip(l2rw_t *st, uint32_t ip, uint32_t now)
+{
+    if (st->lease_ip && st->lease_ip != ip) {
+        st->lease_ip = st->lease_mask = st->lease_gw = st->lease_dns = 0;   /* no longer in use */
+    }
+    if (ip != st->dev_ip) {
+        st->net_seen = false;
+    }
+    st->dev_ip = ip;
+    st->dev_ip_seen_ms = now;
+    st->cand_ip = 0;
+}
+
+/* A source address the device sent from. */
+static void note_src_ip(l2rw_t *st, uint32_t ip, uint32_t now)
+{
+    if (!host_ip(ip)) {
+        return;
+    }
+    if (ip == st->dev_ip) {
+        st->dev_ip_seen_ms = now;
+        st->cand_ip = 0;
+    } else if (st->dev_ip == 0) {
+        set_dev_ip(st, ip, now);
+    } else if (ip != st->cand_ip) {
+        st->cand_ip = ip;
+    } else if (now - st->dev_ip_seen_ms >= L2RW_IP_SWITCH_MS) {
+        set_dev_ip(st, ip, now);
+    }
+}
+
+/* A sender address heard on Wi-Fi: another host in the device's subnet? */
+static void note_wifi_ip(l2rw_t *st, uint32_t ip)
+{
+    if (st->dev_ip && ip != st->dev_ip && host_ip(ip) && ((ip ^ st->dev_ip) & dev_mask(st)) == 0) {
+        st->net_seen = true;
+    }
+}
+
+void l2rw_mgmt_addr(const l2rw_t *st, l2rw_addr_t *out)
+{
+    memset(out, 0, sizeof(*out));
+    out->ip = st->dev_ip;
+    if (!out->ip) {
+        return;
+    }
+    out->mask = dev_mask(st);
+    out->from_lease = st->lease_ip == st->dev_ip;
+    if (out->from_lease) {
+        out->gw = st->lease_gw;
+        out->dns = st->lease_dns;
+    }
+    out->reachable = out->from_lease || st->net_seen;
 }
 
 /* UDP checksum over the pseudo header and the datagram; udp_len is trusted
@@ -105,8 +181,9 @@ static bool dhcp_swap(uint8_t *ip, uint8_t *udp, size_t udp_len, const uint8_t f
     return changed;
 }
 
-/* Remember address, mask, router and DNS from a DHCP ACK. */
-static void dhcp_snoop_ack(l2rw_t *st, const uint8_t *udp, size_t udp_len)
+/* Remember address, mask, router and DNS from a DHCP ACK; the leased address
+ * becomes the device's address. */
+static void dhcp_snoop_ack(l2rw_t *st, const uint8_t *udp, size_t udp_len, uint32_t now)
 {
     const uint8_t *bootp = udp + 8;
     const uint8_t *end = udp + udp_len;
@@ -142,6 +219,7 @@ static void dhcp_snoop_ack(l2rw_t *st, const uint8_t *udp, size_t udp_len)
         st->lease_mask = mask;
         st->lease_gw = gw;
         st->lease_dns = dns;
+        set_dev_ip(st, yiaddr, now);
     }
 }
 
@@ -172,7 +250,7 @@ static uint8_t *ipv4_udp(uint8_t *frame, size_t len, uint16_t sport, uint16_t dp
     return udp;
 }
 
-l2rw_verdict_t l2rw_from_wired(l2rw_t *st, uint8_t *frame, size_t len)
+l2rw_verdict_t l2rw_from_wired(l2rw_t *st, uint8_t *frame, size_t len, uint32_t now_ms)
 {
     if (len < ETH_HDR) {
         return L2RW_DROP;
@@ -204,15 +282,11 @@ l2rw_verdict_t l2rw_from_wired(l2rw_t *st, uint8_t *frame, size_t len)
         }
         uint32_t spa;
         memcpy(&spa, arp + 14, 4);
-        if (spa) {
-            st->dev_ip = spa;
-        }
+        note_src_ip(st, spa, now_ms);
     } else if (type == ETHERTYPE_IPV4 && len >= ETH_HDR + 20) {
         uint32_t sip;
         memcpy(&sip, frame + ETH_HDR + 12, 4);
-        if (sip) {
-            st->dev_ip = sip;
-        }
+        note_src_ip(st, sip, now_ms);
         size_t ulen;
         uint8_t *udp = ipv4_udp(frame, len, DHCP_CLIENT, DHCP_SERVER, &ulen);
         if (udp && dhcp_swap(frame + ETH_HDR, udp, ulen, st->dev_mac, st->sta_mac)) {
@@ -222,7 +296,7 @@ l2rw_verdict_t l2rw_from_wired(l2rw_t *st, uint8_t *frame, size_t len)
     return L2RW_FORWARD;
 }
 
-l2rw_verdict_t l2rw_to_wired(l2rw_t *st, uint8_t *frame, size_t len)
+l2rw_verdict_t l2rw_to_wired(l2rw_t *st, uint8_t *frame, size_t len, uint32_t now_ms)
 {
     if (len < ETH_HDR) {
         return L2RW_DROP;
@@ -243,7 +317,13 @@ l2rw_verdict_t l2rw_to_wired(l2rw_t *st, uint8_t *frame, size_t len)
         if (mac_eq(arp + 18, st->sta_mac)) {    /* target hardware address */
             memcpy(arp + 18, st->dev_mac, 6);
         }
-    } else if (type == ETHERTYPE_IPV4) {
+        uint32_t spa;
+        memcpy(&spa, arp + 14, 4);
+        note_wifi_ip(st, spa);
+    } else if (type == ETHERTYPE_IPV4 && len >= ETH_HDR + 20) {
+        uint32_t sip;
+        memcpy(&sip, frame + ETH_HDR + 12, 4);
+        note_wifi_ip(st, sip);
         size_t ulen;
         uint8_t *udp = ipv4_udp(frame, len, DHCP_SERVER, DHCP_CLIENT, &ulen);
         if (udp) {
@@ -251,7 +331,7 @@ l2rw_verdict_t l2rw_to_wired(l2rw_t *st, uint8_t *frame, size_t len)
                 st->dhcp_rewrites++;
             }
             if (ulen >= 8 + BOOTP_FIXED + 4 && mac_eq(udp + 8 + BOOTP_CHADDR, st->dev_mac)) {
-                dhcp_snoop_ack(st, udp, ulen);
+                dhcp_snoop_ack(st, udp, ulen, now_ms);
             }
         }
     }

@@ -19,7 +19,8 @@ st = {'pw': '12345678', 'sessions': set(), 'mode': 'client', 'saved_mode': 'clie
 CLIENT = {"state":"connected","ssid":"Home","host":"wt32","apSsid":"WT32-Setup-1A2B","ap":False,"ip":"","rssi":-55,
  "version":"0.1.0","wifiUp":True,"eth":True,"devMac":"00:11:22:33:44:55","devIp":"192.168.1.50","toWifi":[10,1000],
  "toEth":[12,1400],"dropWifiDown":0,"dropEthDown":0,"txErrWifi":0,"txErrEth":0,"foreign":0,"ipv6Dropped":0,
- "dhcpRewrites":4,"mgmtIp":"192.168.1.50","mgmtPort":28480,"mgmtFrames":[3,4],"mgmtTxErr":0,"mgmtFlows":1,"mgmtEvictions":0}
+ "dhcpRewrites":4,"mgmtIp":"192.168.1.50","mgmtPort":28480,"mgmtFrames":[3,4],"mgmtTxErr":0,"mgmtFlows":1,"mgmtEvictions":0,
+ "mgmtReach":True,"devLease":True}
 OWN = {"state":"setup","ssid":"","host":"","apSsid":"","ap":False,"ip":"","rssi":0,"version":"0.1.0",
  "eth":True,"apClients":1,"devMac":"00:11:22:33:44:55","devIp":"192.168.77.100"}
 AP = {"state":"setup","ssid":"","host":"","apSsid":"","ap":False,"ip":"","rssi":0,"version":"0.1.0",
@@ -49,6 +50,7 @@ class H(http.server.BaseHTTPRequestHandler):
         if self.path == '/_fallback':                      # test hook: no DHCP on the cable
             st['uplink'] = 'fallback'; return self.send(200, {"ok": True})
         if self.path == '/_setupboot': st['setup_boot'] = True; return self.send(200, {"ok": True})
+        if self.path == '/_othernet': st['other_net'] = True; return self.send(200, {"ok": True})   # static address from another network
         if self.path == '/_log': return self.send(200, st['log'])
         if self.path == '/_rollback': st['ota']['rollback'] = True; return self.send(200, {"ok": True})
         if time.time() < st['ota']['down_until']:                # "restarting"
@@ -60,7 +62,10 @@ class H(http.server.BaseHTTPRequestHandler):
             elif st['mode'] == 'ap':
                 base = dict(AP)
                 if st.get('uplink') == 'fallback': base.update(uplink='fallback', apIp=o['ip'], gw='')
-            else: base = dict(CLIENT)
+            else:
+                base = dict(CLIENT)
+                if st.get('other_net'):
+                    base.update(devIp="192.168.1.77", mgmtIp="192.168.1.77", mgmtReach=False, devLease=False, ap=True)
             o2 = st['ota']
             base.update(version=o2['version'], build=dict(mock_i18n.BUILD, project='wt32_bridge', version=o2['version']), ota={"supported": True, "running": o2['running'],
                         "maxSize": 0x1E0000, "probation": False})

@@ -14,7 +14,7 @@ const assert = require('assert');
   await p.fill('#loginOv input', '12345678'); await p.click('#loginOv button[type=submit]');
   await p.waitForSelector('#loginOv', { state: 'detached' });
   await p.waitForFunction(() => !document.querySelector('#auth .bad').hidden, null, { timeout: 5000 });
-  if (name === 'wt32') await p.waitForFunction(() => document.getElementById('devIp').textContent === '192.168.1.50');
+  if (name === 'wt32') await p.waitForFunction(() => document.getElementById('devIp').textContent.startsWith('192.168.1.50'));
   else await p.waitForFunction(() => document.getElementById('state').textContent.includes('Connected'));
   const inputs = p.locator('#auth input');
   await inputs.nth(0).fill('12345678'); await inputs.nth(1).fill('newpass99'); await inputs.nth(2).fill('newpass99');

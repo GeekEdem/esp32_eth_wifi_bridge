@@ -84,7 +84,7 @@ function mock(args, port, cwd) {
     await p.request.post(`${base}/api/script?run=1`, { data: example, headers: { 'Content-Type': 'text/plain' } });
     await p.reload();
     // client mode: status and traffic; then the mode switch
-    await p.waitForFunction(() => document.getElementById('devIp').textContent === '192.168.1.50');
+    await p.waitForFunction(() => document.getElementById('devIp').textContent.startsWith('192.168.1.50'));
     await shot(p, `client_${lang}.png`, 'h1', '#traffic');
     await p.check('input[value=client]');
     await shot(p, `mode_${lang}.png`, '#cfgClient >> xpath=ancestor::section');

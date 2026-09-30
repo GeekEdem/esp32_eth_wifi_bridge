@@ -34,7 +34,8 @@
 static const char *TAG = "client";
 
 static esp_eth_handle_t s_eth;
-static l2rw_t s_rw;
+static l2rw_t s_rw;                         /* written by the EMAC RX and Wi-Fi tasks */
+static portMUX_TYPE s_rw_lock = portMUX_INITIALIZER_UNLOCKED;
 static volatile bool s_wifi_up;
 static volatile bool s_eth_up;
 static volatile bool s_relearn;
@@ -43,6 +44,8 @@ static esp_netif_t *s_mgmt;
 static demux_t s_demux;
 static portMUX_TYPE s_demux_lock = portMUX_INITIALIZER_UNLOCKED;
 static esp_netif_ip_info_t s_mgmt_ip;       /* as applied to the netif */
+static volatile bool s_mgmt_reachable;      /* the address works on the Wi-Fi network */
+static volatile bool s_mgmt_from_lease;
 
 static struct {
     uint32_t to_wifi_frames, to_wifi_bytes;
@@ -60,12 +63,15 @@ static inline uint32_t now_ms(void)
 /* Device -> Wi-Fi (EMAC RX task). */
 static esp_err_t eth_input(esp_eth_handle_t eth, uint8_t *buf, uint32_t len, void *priv)
 {
+    uint32_t now = now_ms();
+    portENTER_CRITICAL(&s_rw_lock);
     if (s_relearn) {
         s_relearn = false;
         l2rw_forget(&s_rw);
     }
     bool was_known = s_rw.dev_known;
-    l2rw_verdict_t v = l2rw_from_wired(&s_rw, buf, len);
+    l2rw_verdict_t v = l2rw_from_wired(&s_rw, buf, len, now);
+    portEXIT_CRITICAL(&s_rw_lock);
     if (!was_known && s_rw.dev_known) {
         ESP_LOGI(TAG, "device MAC " MACSTR, MAC2STR(s_rw.dev_mac));
     }
@@ -102,9 +108,16 @@ static esp_err_t wifi_input(void *buf, uint16_t len, void *eb)
         }
     }
     if (target != DEMUX_LOCAL) {
+        l2rw_verdict_t v = L2RW_DROP;
+        if (s_eth_up) {
+            uint32_t now = now_ms();
+            portENTER_CRITICAL(&s_rw_lock);
+            v = l2rw_to_wired(&s_rw, buf, len, now);
+            portEXIT_CRITICAL(&s_rw_lock);
+        }
         if (!s_eth_up) {
             s_st.drop_eth_down++;
-        } else if (l2rw_to_wired(&s_rw, buf, len) == L2RW_FORWARD) {
+        } else if (v == L2RW_FORWARD) {
             if (esp_eth_transmit(s_eth, buf, len) == ESP_OK) {
                 s_st.to_eth_frames++;
                 s_st.to_eth_bytes += len;
@@ -172,34 +185,51 @@ static void mgmt_netif_init(const uint8_t sta_mac[6])
     ESP_LOGI(TAG, "management interface MAC " MACSTR, MAC2STR(mac));
 }
 
-/* Follow the device's address: the WT32 answers on the same IP. Until it is
- * known the page is only reachable through the setup AP, so keep that up. */
+/* Follow the device's address (its DHCP lease, else its static address, see
+ * l2rewrite.h): the WT32 answers on the same IP. While there is none, or it
+ * does not work on the Wi-Fi network (a static address from another network),
+ * the page is only reachable through the setup AP, so keep that up. */
 static void mgmt_ip_task(void *arg)
 {
     bool mdns_on = false;
+    bool reach_logged = true;
     while (true) {
         vTaskDelay(pdMS_TO_TICKS(1000));
-        uint32_t ip = s_rw.dev_ip ? s_rw.dev_ip : s_rw.lease_ip;
-        wifi_setup_request_ap(ip == 0);
-        bool from_lease = ip && ip == s_rw.lease_ip;
+        l2rw_addr_t a;
+        portENTER_CRITICAL(&s_rw_lock);
+        l2rw_mgmt_addr(&s_rw, &a);
+        portEXIT_CRITICAL(&s_rw_lock);
+        s_mgmt_reachable = a.reachable;
+        s_mgmt_from_lease = a.from_lease;
+        wifi_setup_request_ap(!a.reachable);
+        if (a.ip && a.reachable != reach_logged) {
+            esp_ip4_addr_t ip = { .addr = a.ip };
+            if (a.reachable) {
+                ESP_LOGI(TAG, "device address " IPSTR " works on the Wi-Fi network", IP2STR(&ip));
+            } else {
+                ESP_LOGW(TAG, "device address " IPSTR " is static and no other host of its subnet is on the "
+                         "Wi-Fi network: keeping the setup AP up", IP2STR(&ip));
+            }
+            reach_logged = a.reachable;
+        }
         esp_netif_ip_info_t want = {
-            .ip.addr = ip,
-            .netmask.addr = from_lease && s_rw.lease_mask ? s_rw.lease_mask : (ip ? ESP_IP4TOADDR(255, 255, 255, 0) : 0),
-            .gw.addr = from_lease ? s_rw.lease_gw : 0,
+            .ip.addr = a.ip,
+            .netmask.addr = a.mask,
+            .gw.addr = a.gw,
         };
         if (memcmp(&want, &s_mgmt_ip, sizeof(want)) == 0) {
             continue;
         }
         esp_netif_set_ip_info(s_mgmt, &want);
-        if (from_lease && s_rw.lease_dns) {
-            esp_netif_dns_info_t dns = { .ip.type = ESP_IPADDR_TYPE_V4, .ip.u_addr.ip4.addr = s_rw.lease_dns };
+        if (a.dns) {
+            esp_netif_dns_info_t dns = { .ip.type = ESP_IPADDR_TYPE_V4, .ip.u_addr.ip4.addr = a.dns };
             esp_netif_set_dns_info(s_mgmt, ESP_NETIF_DNS_MAIN, &dns);
         }
         portENTER_CRITICAL(&s_demux_lock);
-        demux_set_local_ip(&s_demux, ip);
+        demux_set_local_ip(&s_demux, a.ip);
         portEXIT_CRITICAL(&s_demux_lock);
         s_mgmt_ip = want;
-        if (ip) {
+        if (a.ip) {
             ESP_LOGI(TAG, "management at http://" IPSTR ":%d (shared with the device)",
                      IP2STR(&want.ip), CONFIG_WT32_MGMT_PORT);
             if (!mdns_on && mdns_register_netif(s_mgmt) == ESP_OK) {
@@ -278,6 +308,8 @@ void client_mode_get_stats(client_stats_t *out)
     out->ipv6_dropped = s_rw.ipv6_dropped;
     out->dhcp_rewrites = s_rw.dhcp_rewrites;
     out->mgmt_ip = s_mgmt_ip.ip.addr;
+    out->mgmt_reachable = s_mgmt_reachable;
+    out->dev_ip_leased = s_mgmt_from_lease;
     out->mgmt_rx_frames = s_st.mgmt_rx_frames;
     out->mgmt_tx_frames = s_st.mgmt_tx_frames;
     out->mgmt_tx_err = s_st.mgmt_tx_err;

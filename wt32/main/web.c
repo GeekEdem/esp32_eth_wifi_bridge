@@ -90,7 +90,7 @@ size_t web_status_extra(char *buf, size_t pos, size_t cap)
         "\"dropWifiDown\":%lu,\"dropEthDown\":%lu,\"txErrWifi\":%lu,\"txErrEth\":%lu,"
         "\"foreign\":%lu,\"ipv6Dropped\":%lu,\"dhcpRewrites\":%lu,"
         "\"mgmtIp\":\"%s\",\"mgmtPort\":%d,\"mgmtFrames\":[%lu,%lu],\"mgmtTxErr\":%lu,"
-        "\"mgmtFlows\":%d,\"mgmtEvictions\":%lu",
+        "\"mgmtFlows\":%d,\"mgmtEvictions\":%lu,\"mgmtReach\":%s,\"devLease\":%s",
         s.wifi_up ? "true" : "false", s.eth_up ? "true" : "false", mac, ip,
         (unsigned long)s.to_wifi_frames, (unsigned long)s.to_wifi_bytes,
         (unsigned long)s.to_eth_frames, (unsigned long)s.to_eth_bytes,
@@ -99,7 +99,8 @@ size_t web_status_extra(char *buf, size_t pos, size_t cap)
         (unsigned long)s.foreign_frames, (unsigned long)s.ipv6_dropped,
         (unsigned long)s.dhcp_rewrites,
         mgmt, CONFIG_WT32_MGMT_PORT, (unsigned long)s.mgmt_rx_frames, (unsigned long)s.mgmt_tx_frames,
-        (unsigned long)s.mgmt_tx_err, s.mgmt_flows, (unsigned long)s.mgmt_evictions);
+        (unsigned long)s.mgmt_tx_err, s.mgmt_flows, (unsigned long)s.mgmt_evictions,
+        s.mgmt_reachable ? "true" : "false", s.dev_ip_leased ? "true" : "false");
     return own_settings_json(buf, pos, cap);
 }
 

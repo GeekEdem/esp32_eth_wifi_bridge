@@ -13,7 +13,9 @@ The WT32 connects to an existing Wi-Fi network. The device gets an IP from that 
 
 - A Wi-Fi client can have only one MAC, so the device's frames leave with the **WT32 station MAC**, and the MACs inside ARP and DHCP (chaddr, option 61) are rewritten. The router sees one client — under the WT32 station MAC (printed in the log at startup). Reserve the IP for this MAC on the router.
 - The WT32 has no IP of its own: it uses the device's IP and takes only new TCP connections to port **28480** and connections it opened itself. Broadcast, multicast and ARP go to both; everything else (the device's services on any port, its web page on 80, ping) goes to the device. Netmask, gateway and DNS come from the router's DHCP reply to the device.
+- Which address is the device's: the one from its DHCP lease, as soon as the router's reply passes by. A device with a static address: the address it sends from; if it uses several, the WT32 stays on the first one and moves only after it has been silent for 30 s while the device uses another. The page shows "(DHCP)" or "(static)" next to it.
 - Page: **`http://<device IP>:28480`**. While the network is not configured or has been unreachable for 60 s, or the device's IP is not known yet, the page is also available through the **`WT32-Setup-XXXX`** access point → http://192.168.4.1 (open, no Wi-Fi password).
+- A **static address from another network** (e.g. a printer set to `192.168.1.77` in a `192.168.50.x` network): nobody on the Wi-Fi network can reach it, the page included. The WT32 notices it — no DHCP, and no other host of that subnet is heard on Wi-Fi — keeps the `WT32-Setup-XXXX` access point on, and the page and the display point there. The access point goes off once a host of the device's subnet is heard (or the device takes a DHCP address).
 - IPv6 is not forwarded (MACs in neighbor discovery packets are not rewritten).
 
 ### Router
