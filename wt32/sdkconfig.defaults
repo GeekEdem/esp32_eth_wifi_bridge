@@ -26,6 +26,15 @@ CONFIG_ESP_WIFI_TX_BA_WIN=12
 # captive DNS and mDNS share the socket pool
 CONFIG_LWIP_MAX_SOCKETS=16
 
+# mDNS: mdns_register_netif() takes only slots that are not predefined, and
+# by default all three (MDNS_MAX_INTERFACES) are: STA, AP, ETH. The WT32 has
+# no default station or Ethernet netif (the station carries no IP stack, the
+# Ethernet is the bridge's port), so those two slots go to the management
+# netif (client mode) or the bridge (router and access point modes) instead.
+# The AP stays predefined: the setup AP.
+CONFIG_MDNS_PREDEF_NETIF_STA=n
+CONFIG_MDNS_PREDEF_NETIF_ETH=n
+
 # Own-network mode: lwIP bridge between the AP and Ethernet
 CONFIG_ESP_NETIF_BRIDGE_EN=y
 CONFIG_LWIP_NUM_NETIF_CLIENT_DATA=1

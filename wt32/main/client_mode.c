@@ -279,10 +279,17 @@ static void mgmt_ip_task(void *arg)
         /* mDNS only after wifi_setup_start() has initialised it: this task starts
          * first, and a device that sends its address right after link-up (a PC
          * does) made mdns_register_netif() race mdns_init() and assert on its
-         * not yet created lock (seen on hardware, 3.7 s after boot). */
+         * not yet created lock (seen on hardware, 3.7 s after boot). ENABLE
+         * on a running interface probes and announces the new address; no
+         * DISABLE: on a registered netif it clears the registration. */
         if (announce && wifi_setup_started()) {
-            if (!mdns_on && mdns_register_netif(s_mgmt) == ESP_OK) {
-                mdns_on = true;
+            if (!mdns_on) {
+                esp_err_t err = mdns_register_netif(s_mgmt);
+                if (err == ESP_OK) {
+                    mdns_on = true;
+                } else {
+                    ESP_LOGW(TAG, "mDNS on the management address: %s", esp_err_to_name(err));
+                }
             }
             if (mdns_on) {
                 mdns_netif_action(s_mgmt, MDNS_EVENT_ENABLE_IP4 | MDNS_EVENT_ANNOUNCE_IP4);

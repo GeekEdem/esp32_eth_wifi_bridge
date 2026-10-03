@@ -107,9 +107,11 @@ static bool is_ap_station(const uint8_t mac[6])
     return false;
 }
 
+/* ENABLE on a running interface probes and announces the new address. No
+ * DISABLE first: on a registered (not predefined) netif mdns 1.13 clears the
+ * registration there, the ENABLE after it fails and mDNS stays off. */
 static void mdns_readdress(void)
 {
-    mdns_netif_action(s_br, MDNS_EVENT_DISABLE_IP4);
     mdns_netif_action(s_br, MDNS_EVENT_ENABLE_IP4 | MDNS_EVENT_ANNOUNCE_IP4);
 }
 
@@ -301,8 +303,11 @@ esp_err_t own_mode_start(esp_eth_handle_t eth, const wt32_settings_t *s)
     mdns_hostname_set(CONFIG_WT32_HOSTNAME);
     mdns_instance_name_set("WT32");
     mdns_service_add(NULL, "_http", "_tcp", 80, NULL, 0);
-    if (mdns_register_netif(s_br) == ESP_OK) {
+    esp_err_t err = mdns_register_netif(s_br);
+    if (err == ESP_OK) {
         mdns_netif_action(s_br, MDNS_EVENT_ENABLE_IP4 | MDNS_EVENT_ANNOUNCE_IP4);
+    } else {
+        ESP_LOGW(TAG, "mDNS on the bridge: %s", esp_err_to_name(err));
     }
 
     if (s_ap_mode) {

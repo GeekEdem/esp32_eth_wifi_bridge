@@ -37,6 +37,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lwip/ip4_addr.h"
+#include "mdns.h"
 #include "nvs_flash.h"
 #include "own_mode.h"
 #include "script.h"
@@ -241,6 +242,9 @@ void app_main(void)
             .ap_always_on = s_setup_boot,
         };
         ESP_ERROR_CHECK(wifi_setup_start(&wifi));
+        /* Port 80 of the shared address is the device's; the page also
+         * answers on the management port on the setup AP. */
+        mdns_service_port_set("_http", "_tcp", CONFIG_WT32_MGMT_PORT);
     }
     ESP_ERROR_CHECK(web_start(&set, s_setup_boot));
     s_mode = set.mode;
