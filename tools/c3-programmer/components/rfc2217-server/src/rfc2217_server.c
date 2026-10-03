@@ -290,7 +290,8 @@ void *server_thread_fn(void *ctx /* rfc2217_server_t server */)
     }
     ESP_LOGD(TAG, "Socket bound, port %d", server->config.port);
 
-    err = listen(listen_sock, 1);
+    /* Local addition (see PATCHES.md): configurable backlog, upstream uses 1. */
+    err = listen(listen_sock, server->config.listen_backlog ? (int)server->config.listen_backlog : 1);
     if (err != 0) {
         ESP_LOGE(TAG, "Error occurred during listen: errno %d (%s)", errno, strerror(errno));
         goto CLEAN_UP;

@@ -29,5 +29,14 @@ manager, with these changes:
   test on lwIP from ESP-IDF is in `test/rfc2217_lwip/`. `client_socket`
   is now -1 when there is no client (set in `create`, and before `close`).
 
+- **Configurable listen backlog.** `rfc2217_server_config_t` has
+  `listen_backlog` (0 = 1, the upstream value). With a backlog of 1 a client
+  that gave up while the server was busy can leave a half-open connection
+  (SYN-RCVD: its socket is closed when the server's SYN-ACK arrives, and a
+  firewall in "stealth" mode answers nothing) in the only slot; lwIP keeps it
+  for ~18 s (12 SYN-ACK retransmissions) and refuses every other client
+  meanwhile, and the next impatient retry can do the same. The C3 uses 4.
+  Waiting clients are served one after another, as before.
+
 Removed from the copy: examples, CI and tooling files. The rest is unchanged.
 Worth proposing upstream; until then, update this copy by hand.

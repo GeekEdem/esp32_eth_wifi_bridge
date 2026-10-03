@@ -105,6 +105,9 @@ typedef struct {
     unsigned keepalive_idle_s;      //!< idle time before the first probe
     unsigned keepalive_interval_s;  //!< time between probes
     unsigned keepalive_count;       //!< unanswered probes before the connection is dropped
+    /* Local addition (see PATCHES.md): listen() backlog, the connections that may
+     * wait while one client is served. 0 = 1 (upstream behaviour). */
+    unsigned listen_backlog;
 } rfc2217_server_config_t;
 
 

@@ -163,6 +163,7 @@ int main(void)
         .keepalive_idle_s = getenv("KEEPALIVE") && !atoi(getenv("KEEPALIVE")) ? 0 : 5,
         .keepalive_interval_s = 2,
         .keepalive_count = 5,
+        .listen_backlog = 4,            /* as bridge.c */
     };
     rfc2217_server_create(&cfg, &s_server);
     rfc2217_server_start(s_server);

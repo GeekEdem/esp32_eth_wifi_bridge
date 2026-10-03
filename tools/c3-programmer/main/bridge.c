@@ -305,6 +305,14 @@ esp_err_t bridge_start(void)
         .keepalive_idle_s = CONFIG_C3PROG_CLIENT_KEEPALIVE_S ? (CONFIG_C3PROG_CLIENT_KEEPALIVE_S + 2) / 3 : 0,
         .keepalive_interval_s = 2,
         .keepalive_count = CONFIG_C3PROG_CLIENT_KEEPALIVE_S > 3 ? (CONFIG_C3PROG_CLIENT_KEEPALIVE_S * 2 / 3) / 2 : 1,
+        /* With room for one pending connection only, a client that gave up while
+         * the server was busy (a retried esptool while a dead client is still
+         * held) can leave a half-open connection in that slot: the C3's SYN-ACK
+         * finds the client's socket closed, Windows' firewall sends no RST, and
+         * lwIP keeps it in SYN-RCVD for ~18 s, refusing every new client; the
+         * next impatient retry can do the same again (seen on hardware: no new
+         * client for 59 s). A few slots keep the queue usable. */
+        .listen_backlog = 4,
     };
     ESP_RETURN_ON_ERROR(rfc2217_server_create(&cfg, &s_server), TAG, "rfc2217 create");
     esp_err_t err = rfc2217_server_start(s_server) == 0 ? ESP_OK : ESP_FAIL;
