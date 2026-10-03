@@ -230,6 +230,7 @@ static void mgmt_netif_init(const uint8_t sta_mac[6])
 static void mgmt_ip_task(void *arg)
 {
     bool mdns_on = false;
+    bool announce = false;                  /* a new address waits for mDNS */
     l2rw_reach_t reported = L2RW_REACH_UNKNOWN;
     while (true) {
         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -257,29 +258,36 @@ static void mgmt_ip_task(void *arg)
             .netmask.addr = a.mask,
             .gw.addr = a.gw,
         };
-        if (memcmp(&want, &s_mgmt_ip, sizeof(want)) == 0) {
-            continue;
+        if (memcmp(&want, &s_mgmt_ip, sizeof(want)) != 0) {
+            esp_netif_set_ip_info(s_mgmt, &want);
+            if (a.dns) {
+                esp_netif_dns_info_t dns = { .ip.type = ESP_IPADDR_TYPE_V4, .ip.u_addr.ip4.addr = a.dns };
+                esp_netif_set_dns_info(s_mgmt, ESP_NETIF_DNS_MAIN, &dns);
+            }
+            portENTER_CRITICAL(&s_demux_lock);
+            demux_set_local_ip(&s_demux, a.ip);
+            portEXIT_CRITICAL(&s_demux_lock);
+            s_mgmt_ip = want;
+            announce = a.ip != 0;
+            if (a.ip) {
+                ESP_LOGI(TAG, "management at http://" IPSTR ":%d (shared with the device)",
+                         IP2STR(&want.ip), CONFIG_WT32_MGMT_PORT);
+            } else {
+                ESP_LOGI(TAG, "device address unknown, management on the setup AP only");
+            }
         }
-        esp_netif_set_ip_info(s_mgmt, &want);
-        if (a.dns) {
-            esp_netif_dns_info_t dns = { .ip.type = ESP_IPADDR_TYPE_V4, .ip.u_addr.ip4.addr = a.dns };
-            esp_netif_set_dns_info(s_mgmt, ESP_NETIF_DNS_MAIN, &dns);
-        }
-        portENTER_CRITICAL(&s_demux_lock);
-        demux_set_local_ip(&s_demux, a.ip);
-        portEXIT_CRITICAL(&s_demux_lock);
-        s_mgmt_ip = want;
-        if (a.ip) {
-            ESP_LOGI(TAG, "management at http://" IPSTR ":%d (shared with the device)",
-                     IP2STR(&want.ip), CONFIG_WT32_MGMT_PORT);
+        /* mDNS only after wifi_setup_start() has initialised it: this task starts
+         * first, and a device that sends its address right after link-up (a PC
+         * does) made mdns_register_netif() race mdns_init() and assert on its
+         * not yet created lock (seen on hardware, 3.7 s after boot). */
+        if (announce && wifi_setup_started()) {
             if (!mdns_on && mdns_register_netif(s_mgmt) == ESP_OK) {
                 mdns_on = true;
             }
             if (mdns_on) {
                 mdns_netif_action(s_mgmt, MDNS_EVENT_ENABLE_IP4 | MDNS_EVENT_ANNOUNCE_IP4);
             }
-        } else {
-            ESP_LOGI(TAG, "device address unknown, management on the setup AP only");
+            announce = false;
         }
     }
 }

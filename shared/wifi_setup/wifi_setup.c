@@ -36,7 +36,7 @@ static esp_timer_handle_t s_fallback_timer;
 static volatile wifi_setup_state_t s_state;
 static volatile bool s_ap_active;
 static volatile bool s_ap_requested;     /* by the application, see wifi_setup_request_ap() */
-static bool s_started;
+static volatile bool s_started;          /* read by other tasks, see wifi_setup_started() */
 
 static void nvs_read_str(nvs_handle_t h, const char *key, char *dst, size_t len)
 {
@@ -244,6 +244,11 @@ void wifi_setup_request_ap(bool on)
     } else if (s_state == WIFI_SETUP_CONNECTED) {
         ap_disable();
     }
+}
+
+bool wifi_setup_started(void)
+{
+    return s_started;
 }
 
 wifi_setup_state_t wifi_setup_state(void)

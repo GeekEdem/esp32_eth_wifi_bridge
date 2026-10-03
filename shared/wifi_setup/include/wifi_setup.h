@@ -34,6 +34,11 @@ typedef enum {
 
 esp_err_t wifi_setup_start(const wifi_setup_config_t *cfg);
 
+/* True once wifi_setup_start() has returned: Wi-Fi and mDNS are initialised.
+ * Another task must not call mdns_*() before that: mdns_init() marks the
+ * server ready before it creates its lock, and a call in between asserts. */
+bool wifi_setup_started(void);
+
 /* Keep the setup AP up for an application reason (e.g. its page is not
  * reachable in the home network yet); false hands control back. */
 void wifi_setup_request_ap(bool on);
