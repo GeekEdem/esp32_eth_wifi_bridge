@@ -13,7 +13,7 @@
   "script.example": "No script saved yet: the editor shows an example.",
   "script.halted": "Stopped",
   "script.kb": "{n} KB",
-  "script.mem": "Script memory: {used} (peak {peak}) of {limit} · free on the device {heap}",
+  "script.mem": "Script memory: {used} (peak {peak}) of {limit} · free on the device {heap} (lowest since start {min})",
   "script.noOutputs": "the script has not shown anything with output()",
   "script.results": "Results",
   "script.run": "Run",

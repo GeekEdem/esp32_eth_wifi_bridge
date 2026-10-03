@@ -102,7 +102,7 @@
 - приклад ESP-IDF [`examples/network/sta2eth`](https://github.com/espressif/esp-idf/tree/master/examples/network/sta2eth): заміна MAC пристрою на MAC станції, використана в режимі «Клієнт»;
 - [egnor/wt32-eth01](https://github.com/egnor/wt32-eth01): нотатки про WT32-ETH01 і її 3D-модель, яку використовують перевірки корпусу (завантажується під час збірки, не входить у репозиторій).
 
-Сторонні частини мають власні ліцензії: [Berry](https://github.com/berry-lang/berry) (MIT, git-підмодуль), шрифт misc-fixed 6×10 (public domain, через [u8g2](https://github.com/olikraus/u8g2)); ESP-IDF, esp-protocols (mdns), esp-eth-drivers і rfc2217-server (Apache-2.0) завантажуються під час збірки.
+Сторонні частини мають власні ліцензії: [Berry](https://github.com/berry-lang/berry) (MIT, git-підмодуль), шрифт misc-fixed 6×10 (public domain, через [u8g2](https://github.com/olikraus/u8g2)); ESP-IDF, esp-protocols (mdns) і esp-eth-drivers (Apache-2.0) завантажуються під час збірки; [rfc2217-server](https://github.com/igrr/rfc2217-server) (Apache-2.0) лежить у `tools/c3-programmer/components/` з невеликою зміною (TCP keepalive).
 
 ## Ліцензія
 

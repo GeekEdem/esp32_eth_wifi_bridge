@@ -18,7 +18,7 @@ This component runs **one** user script in [Berry](https://github.com/berry-lang
 | `cancel(id)` | cancel a timer |
 | `status()` → map | device state: the same fields as on the page (`mode`, `eth`, `devIp`, `devMac`, …) |
 | `millis()` | ms since start |
-| `heap()` | free device memory, bytes |
+| `heap()` | free device memory, bytes (the same figure as "free on the device" on the page) |
 
 Standard modules: `string`, `json`, `math`, `time`, `global`, `gc`, `introspect`, `strict` (via `import`). There is no file system.
 

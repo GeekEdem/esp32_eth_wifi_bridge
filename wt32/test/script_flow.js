@@ -28,6 +28,7 @@ const assert = require('assert');
   await waitText(() => document.querySelector('#script pre').textContent.includes('script started'));
   assert(!(await text('#script')).includes('the editor shows an example'));
   assert((await text('#script')).includes('Script memory: 8.8 KB'));
+  assert((await text('#script')).includes('free on the device 87.9 KB (lowest since start 69.3 KB)'));
 
   // stop; console gets appended, not replaced
   await p.click('#script button:has-text("Stop")');
@@ -43,6 +44,17 @@ const assert = require('assert');
   await p.fill(ta, 'while true end');
   await p.click('#script button:has-text("Save and run")');
   await waitText(() => document.querySelector('#script > div').textContent.includes('timeout_error'));
+
+  // answers slower than the page polls (a busy device): polls overlap, and a
+  // line that arrives meanwhile must still show once
+  await fetch(`${base}/_slowstate`);
+  await p.waitForTimeout(5000);
+  await fetch(`${base}/_console?line=` + encodeURIComponent('-- start #9'));
+  await p.locator('#script button', { hasText: /^Run$/ }).click();   // a poll of its own, too
+  await p.waitForTimeout(8000);
+  const all = await text('#script pre');
+  const lines = all.split('\n').filter(l => l === '-- start #9');
+  assert.strictEqual(lines.length, 1, 'a console line shown ' + lines.length + ' times');
 
   // too long for the device: refused on the page, nothing sent
   await p.fill(ta, 'x'.repeat(40000));

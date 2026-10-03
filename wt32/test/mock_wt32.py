@@ -51,7 +51,11 @@ class H(http.server.BaseHTTPRequestHandler):
         if self.path == '/_fallback':                      # test hook: no DHCP on the cable
             st['uplink'] = 'fallback'; return self.send(200, {"ok": True})
         if self.path == '/_setupboot': st['setup_boot'] = True; return self.send(200, {"ok": True})
-        if self.path == '/_othernet': st['other_net'] = True; return self.send(200, {"ok": True})   # static address from another network
+        if self.path == '/_slowstate': st['slow_state'] = 2.5; return self.send(200, {"ok": True})   # test hook: answers slower than the page polls
+        if self.path.startswith('/_console?'):                                # test hook: a console line from the script
+            st['script']['console'].append(urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)['line'][0]); return self.send(200, {"ok": True})
+        if self.path == '/_reachunknown': st['reach_unknown'] = True; return self.send(200, {"ok": True})   # too early to tell (0.8.1)
+        if self.path == '/_othernet': st['reach_unknown'] = False; st['other_net'] = True; return self.send(200, {"ok": True})   # static address from another network
         if self.path == '/_log': return self.send(200, st['log'])
         if self.path == '/_rollback': st['ota']['rollback'] = True; return self.send(200, {"ok": True})
         if time.time() < st['ota']['down_until']:                # "restarting"
@@ -65,6 +69,8 @@ class H(http.server.BaseHTTPRequestHandler):
                 if st.get('uplink') == 'fallback': base.update(uplink='fallback', apIp=o['ip'], gw='')
             else:
                 base = dict(CLIENT)
+                if st.get('reach_unknown'):
+                    base.update(devIp="192.168.1.77", mgmtIp="192.168.1.77", mgmtReach=None, devLease=False, ap=True)
                 if st.get('other_net'):
                     base.update(devIp="192.168.1.77", mgmtIp="192.168.1.77", mgmtReach=False, devLease=False, ap=True)
             o2 = st['ota']
@@ -79,9 +85,10 @@ class H(http.server.BaseHTTPRequestHandler):
             sc = st['script']; txt = sc['text'] if sc['text'] is not None else EXAMPLE
             return self.send(200, txt.encode(), 'text/plain; charset=utf-8', hdrs=[('X-Script-Saved', '1' if sc['text'] is not None else '0')])
         if self.path.startswith('/api/script/state'):
+            time.sleep(st.get('slow_state', 0))              # lets the page's polls overlap
             sc = st['script']; since = int(urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('since', ['0'])[0])
             return self.send(200, {"ok": True, "state": sc['state'], "autostart": sc['autostart'], "crashDisabled": False,
-                "runs": sc['runs'], "mem": {"used": 9000, "peak": 12000, "limit": 40960}, "heap": 90000,
+                "runs": sc['runs'], "mem": {"used": 9000, "peak": 12000, "limit": 40960}, "heap": 90000, "heapMin": 71000,
                 "saved": len(sc['text'] or ''), "maxLen": 32768, "error": sc['error'], "outputs": sc['outputs'],
                 "seq": len(sc['console']), "console": sc['console'][since:]})
         self.send(404, {})
@@ -96,6 +103,7 @@ class H(http.server.BaseHTTPRequestHandler):
         if self.path.startswith('/api/script') and self.path.split('?')[0] == '/api/script':
             n = int(self.headers.get('Content-Length') or 0); body = self.rfile.read(n).decode()
             if self.sid() not in st['sessions']: return self.send(401, L.err('err.loginRequired', auth=False))
+            if st['script']['state'] == 'running': st['script']['console'].append('-- stopped')   # as the firmware's save
             st['script']['text'] = body; st['script']['state'] = 'stopped'
             if 'run=1' in self.path: self.script_run()
             return self.send(200, {"ok": True})

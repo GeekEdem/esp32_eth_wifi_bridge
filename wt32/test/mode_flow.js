@@ -87,6 +87,11 @@ const assert = require('assert');
   await fetch(`${base}/_restart`);
   await p.reload();
   await p.waitForFunction(() => document.getElementById('devIp').textContent === '192.168.1.50 (DHCP)');
+  // too early to tell (first seconds on Wi-Fi): no warning yet
+  await fetch(`${base}/_reachunknown`);
+  await p.waitForFunction(() => document.getElementById('devIp').textContent === '192.168.1.77 (static)');
+  assert(!(await p.textContent('#mgmt')).includes('another network'));
+  assert(!(await p.textContent('#hint')).includes('static address'));
   await fetch(`${base}/_othernet`);
   await p.waitForFunction(() => document.getElementById('hint').textContent.includes('static address, 192.168.1.77'));
   assert((await p.textContent('#devIp')).includes('192.168.1.77 (static)'));

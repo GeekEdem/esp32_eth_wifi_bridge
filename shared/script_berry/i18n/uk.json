@@ -13,7 +13,7 @@
   "script.example": "Скрипт ще не збережено — у редакторі приклад.",
   "script.halted": "Зупинено",
   "script.kb": "{n} КБ",
-  "script.mem": "Памʼять скрипта: {used} (пік {peak}) з {limit} · вільно на пристрої {heap}",
+  "script.mem": "Памʼять скрипта: {used} (пік {peak}) з {limit} · вільно на пристрої {heap} (найменше від старту {min})",
   "script.noOutputs": "скрипт нічого не вивів через output()",
   "script.results": "Результати",
   "script.run": "Запустити",

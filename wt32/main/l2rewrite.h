@@ -12,7 +12,10 @@
  * uses another, so aliases and bursts from a second address do not move it.
  * The address counts as reachable from the Wi-Fi network if it came from DHCP
  * or another host of its subnet has been heard on Wi-Fi since the address was
- * taken (a static address from a different network never is).
+ * taken (a static address from a different network never is). It is declared
+ * unreachable only after the station has been connected for
+ * L2RW_REACH_GRACE_MS with no DHCP exchange of the device in flight; until
+ * then it is unknown (right after boot nothing has been heard yet).
  *
  * Pure functions over a state struct: no ESP-IDF dependencies, host-testable.
  * Times are milliseconds from any monotonic clock.
@@ -24,6 +27,7 @@
 #include <stdint.h>
 
 #define L2RW_IP_SWITCH_MS   30000u
+#define L2RW_REACH_GRACE_MS 12000u
 
 typedef struct {
     uint8_t sta_mac[6];
@@ -36,6 +40,10 @@ typedef struct {
     uint32_t dev_ip_seen_ms;    /* last frame from dev_ip */
     uint32_t cand_ip;           /* another source address the device is using */
     bool net_seen;              /* another host of dev_ip's subnet heard on Wi-Fi */
+    bool dhcp_pending;          /* the device sent DHCP and no ACK came back yet ... */
+    uint32_t dhcp_tx_ms;        /* ... at this time */
+    bool wifi_up;               /* the station is connected ... */
+    uint32_t wifi_since_ms;     /* ... since */
 
     /* from the last DHCP ACK the device received (network order, 0 = none);
      * dropped when the device stops using that address */
@@ -66,11 +74,20 @@ l2rw_verdict_t l2rw_from_wired(l2rw_t *st, uint8_t *frame, size_t len, uint32_t 
 /* Wi-Fi -> device. */
 l2rw_verdict_t l2rw_to_wired(l2rw_t *st, uint8_t *frame, size_t len, uint32_t now_ms);
 
+/* The station connected / disconnected. */
+void l2rw_wifi_state(l2rw_t *st, bool up, uint32_t now_ms);
+
+typedef enum {
+    L2RW_REACH_UNKNOWN,         /* no address, or too early to tell */
+    L2RW_REACH_YES,             /* from DHCP, or its subnet is present on Wi-Fi */
+    L2RW_REACH_NO,              /* a static address nobody on Wi-Fi shares */
+} l2rw_reach_t;
+
 /* Address for the management interface (network order; ip 0 = none yet). */
 typedef struct {
     uint32_t ip, mask, gw, dns;
     bool from_lease;
-    bool reachable;             /* from DHCP, or its subnet is present on Wi-Fi */
+    l2rw_reach_t reach;
 } l2rw_addr_t;
 
-void l2rw_mgmt_addr(const l2rw_t *st, l2rw_addr_t *out);
+void l2rw_mgmt_addr(const l2rw_t *st, uint32_t now_ms, l2rw_addr_t *out);

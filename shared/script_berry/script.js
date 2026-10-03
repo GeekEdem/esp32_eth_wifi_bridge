@@ -59,7 +59,21 @@
       if (!j.ok) throw new Error(I18N.msg(j));
     }
 
-    async function poll() {
+    /* One state request at a time: two in flight would both ask for the console
+     * lines after the same `since` and print them twice (a busy device answers
+     * slower than the 2 s poll, and the buttons poll too). A poll asked for
+     * meanwhile runs once the current one is done. */
+    let polling = null, pollAgain = false;
+    function poll() {
+      if (polling) { pollAgain = true; return polling; }
+      polling = fetchState().finally(() => {
+        polling = null;
+        if (pollAgain) { pollAgain = false; poll(); }
+      });
+      return polling;
+    }
+
+    async function fetchState() {
       try {
         const r = await fetch('/api/script/state?since=' + since, { cache: 'no-store' });
         const s = await r.json();
@@ -79,7 +93,8 @@
       state.textContent = t('script.state', { s: STATES[s.state] ? t(STATES[s.state]) : s.state }) + (s.error ? ' — ' + s.error : '');
       state.className = s.state === 'error' ? 'bad' : (s.state === 'running' ? 'ok' : '');
       if (s.crashDisabled) state.textContent += t('script.crashOff');
-      mem.textContent = t('script.mem', { used: kb(s.mem.used), peak: kb(s.mem.peak), limit: kb(s.mem.limit), heap: kb(s.heap) });
+      mem.textContent = t('script.mem', { used: kb(s.mem.used), peak: kb(s.mem.peak), limit: kb(s.mem.limit), heap: kb(s.heap),
+        min: s.heapMin ? kb(s.heapMin) : '—' });
       auto.checked = s.autostart;
       maxLen = s.maxLen;
       outs.textContent = '';

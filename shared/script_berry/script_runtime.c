@@ -50,6 +50,11 @@ static volatile script_state_t s_state;
 static char s_error[160];
 static bool s_autostart;
 static bool s_crash_disabled;
+/* Free heap as the script task sees it (sampled each pass of its loop, outside
+ * any web request): the page shows this, so it matches the script's heap().
+ * Read inside the request handler it would be 10-15 KB lower (the request's
+ * own buffers). */
+static volatile uint32_t s_heap_free;
 static uint32_t s_runs;
 static int64_t s_call_start_us;
 
@@ -408,6 +413,7 @@ static void script_task(void *arg)
     }
     uint32_t wait = IDLE_WAIT_MS;
     while (true) {
+        s_heap_free = esp_get_free_heap_size();
         cmd_t cmd;
         if (xQueueReceive(s_cmds, &cmd, pdMS_TO_TICKS(wait ? wait : 1)) == pdTRUE) {
             if (cmd.type == CMD_RUN) {
@@ -497,10 +503,11 @@ size_t script_state_json(char *buf, size_t pos, size_t cap, uint32_t since)
     size_t src_len = script_saved_len();
     pos = setup_portal_appendf(buf, pos, cap,
         "\"state\":\"%s\",\"autostart\":%s,\"crashDisabled\":%s,\"runs\":%lu,"
-        "\"mem\":{\"used\":%u,\"peak\":%u,\"limit\":%u},\"heap\":%lu,\"saved\":%u,\"maxLen\":%u,\"error\":",
+        "\"mem\":{\"used\":%u,\"peak\":%u,\"limit\":%u},\"heap\":%lu,\"heapMin\":%lu,\"saved\":%u,\"maxLen\":%u,\"error\":",
         names[s_state], s_autostart ? "true" : "false", s_crash_disabled ? "true" : "false",
         (unsigned long)s_runs, (unsigned)s_mem_used, (unsigned)s_mem_peak, (unsigned)s_cfg.mem_limit,
-        (unsigned long)esp_get_free_heap_size(), (unsigned)src_len, (unsigned)script_max_len());
+        (unsigned long)(s_heap_free ? s_heap_free : esp_get_free_heap_size()),
+        (unsigned long)esp_get_minimum_free_heap_size(), (unsigned)src_len, (unsigned)script_max_len());
     pos = setup_portal_json_str(buf, pos, cap, s_error);
 
     pos = setup_portal_appendf(buf, pos, cap, ",\"outputs\":[");

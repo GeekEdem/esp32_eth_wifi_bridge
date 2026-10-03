@@ -44,7 +44,7 @@ static esp_netif_t *s_mgmt;
 static demux_t s_demux;
 static portMUX_TYPE s_demux_lock = portMUX_INITIALIZER_UNLOCKED;
 static esp_netif_ip_info_t s_mgmt_ip;       /* as applied to the netif */
-static volatile bool s_mgmt_reachable;      /* the address works on the Wi-Fi network */
+static volatile l2rw_reach_t s_mgmt_reach;  /* does the address work on the Wi-Fi network */
 static volatile bool s_mgmt_from_lease;
 
 /* Wi-Fi TX buffers full: how many ticks (10 ms) a frame from the device may
@@ -59,6 +59,8 @@ static struct {
     uint32_t drop_wifi_down, drop_eth_down;
     uint32_t tx_err_wifi, tx_err_eth;
     uint32_t mgmt_rx_frames, mgmt_tx_frames, mgmt_tx_err;
+    uint32_t mgmt_tx_waits;
+    esp_err_t mgmt_tx_last_err;
 } s_st;
 
 static inline uint32_t now_ms(void)
@@ -166,10 +168,19 @@ static esp_err_t mgmt_transmit(void *h, void *buf, size_t len)
         return ESP_FAIL;
     }
     esp_err_t err = esp_wifi_internal_tx(WIFI_IF_STA, buf, len);
+    if (err == ESP_ERR_NO_MEM) {
+        /* Wi-Fi TX buffers full (the device is sending hard): one tick for the
+         * driver to drain. This is the tcpip thread, so no longer than that;
+         * TCP retransmits what is still lost. */
+        s_st.mgmt_tx_waits++;
+        vTaskDelay(1);
+        err = esp_wifi_internal_tx(WIFI_IF_STA, buf, len);
+    }
     if (err == ESP_OK) {
         s_st.mgmt_tx_frames++;
     } else {
         s_st.mgmt_tx_err++;
+        s_st.mgmt_tx_last_err = err;
     }
     return err;
 }
@@ -212,31 +223,34 @@ static void mgmt_netif_init(const uint8_t sta_mac[6])
 }
 
 /* Follow the device's address (its DHCP lease, else its static address, see
- * l2rewrite.h): the WT32 answers on the same IP. While there is none, or it
- * does not work on the Wi-Fi network (a static address from another network),
- * the page is only reachable through the setup AP, so keep that up. */
+ * l2rewrite.h): the WT32 answers on the same IP. Until it is known to work on
+ * the Wi-Fi network (none yet, too early to tell, or a static address from
+ * another network) the page is only reachable through the setup AP, so keep
+ * that up; only a definite "no" is reported. */
 static void mgmt_ip_task(void *arg)
 {
     bool mdns_on = false;
-    bool reach_logged = true;
+    l2rw_reach_t reported = L2RW_REACH_UNKNOWN;
     while (true) {
         vTaskDelay(pdMS_TO_TICKS(1000));
         l2rw_addr_t a;
+        uint32_t now = now_ms();
         portENTER_CRITICAL(&s_rw_lock);
-        l2rw_mgmt_addr(&s_rw, &a);
+        l2rw_mgmt_addr(&s_rw, now, &a);
         portEXIT_CRITICAL(&s_rw_lock);
-        s_mgmt_reachable = a.reachable;
+        s_mgmt_reach = a.reach;
         s_mgmt_from_lease = a.from_lease;
-        wifi_setup_request_ap(!a.reachable);
-        if (a.ip && a.reachable != reach_logged) {
-            esp_ip4_addr_t ip = { .addr = a.ip };
-            if (a.reachable) {
-                ESP_LOGI(TAG, "device address " IPSTR " works on the Wi-Fi network", IP2STR(&ip));
-            } else {
-                ESP_LOGW(TAG, "device address " IPSTR " is static and no other host of its subnet is on the "
-                         "Wi-Fi network: keeping the setup AP up", IP2STR(&ip));
-            }
-            reach_logged = a.reachable;
+        wifi_setup_request_ap(a.reach != L2RW_REACH_YES);
+        esp_ip4_addr_t dev = { .addr = a.ip };
+        if (a.reach == L2RW_REACH_NO && reported != L2RW_REACH_NO) {
+            ESP_LOGW(TAG, "device address " IPSTR " is static and no other host of its subnet is on the "
+                     "Wi-Fi network: keeping the setup AP up", IP2STR(&dev));
+            reported = L2RW_REACH_NO;
+        } else if (a.reach == L2RW_REACH_YES && reported == L2RW_REACH_NO) {
+            ESP_LOGI(TAG, "device address " IPSTR " works on the Wi-Fi network", IP2STR(&dev));
+            reported = L2RW_REACH_YES;
+        } else if (a.reach == L2RW_REACH_YES) {
+            reported = L2RW_REACH_YES;
         }
         esp_netif_ip_info_t want = {
             .ip.addr = a.ip,
@@ -272,13 +286,20 @@ static void mgmt_ip_task(void *arg)
 
 static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
-    if (id == WIFI_EVENT_STA_CONNECTED) {
+    bool up = id == WIFI_EVENT_STA_CONNECTED;
+    if (up) {
         esp_wifi_internal_reg_rxcb(WIFI_IF_STA, wifi_input);
         s_wifi_up = true;
     } else if (id == WIFI_EVENT_STA_DISCONNECTED) {
         s_wifi_up = false;
         esp_wifi_internal_reg_rxcb(WIFI_IF_STA, NULL);
+    } else {
+        return;
     }
+    uint32_t now = now_ms();
+    portENTER_CRITICAL(&s_rw_lock);
+    l2rw_wifi_state(&s_rw, up, now);            /* the reachability grace period counts from here */
+    portEXIT_CRITICAL(&s_rw_lock);
 }
 
 static void eth_event(void *arg, esp_event_base_t base, int32_t id, void *data)
@@ -336,11 +357,13 @@ void client_mode_get_stats(client_stats_t *out)
     out->ipv6_dropped = s_rw.ipv6_dropped;
     out->dhcp_rewrites = s_rw.dhcp_rewrites;
     out->mgmt_ip = s_mgmt_ip.ip.addr;
-    out->mgmt_reachable = s_mgmt_reachable;
+    out->mgmt_reach = (int)s_mgmt_reach;
     out->dev_ip_leased = s_mgmt_from_lease;
     out->mgmt_rx_frames = s_st.mgmt_rx_frames;
     out->mgmt_tx_frames = s_st.mgmt_tx_frames;
     out->mgmt_tx_err = s_st.mgmt_tx_err;
+    out->mgmt_tx_waits = s_st.mgmt_tx_waits;
+    out->mgmt_tx_last_err = s_st.mgmt_tx_last_err;
     portENTER_CRITICAL(&s_demux_lock);
     out->mgmt_flows = demux_active_flows(&s_demux, now_ms());
     out->mgmt_evictions = s_demux.evictions;

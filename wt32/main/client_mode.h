@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "esp_err.h"
 #include "esp_eth.h"
+#include "l2rewrite.h"
 
 typedef struct {
     bool wifi_up;
@@ -21,9 +22,11 @@ typedef struct {
     int tx_err_wifi_last;               /* esp_err_t of the last refused frame (0 = none) */
     uint32_t foreign_frames, ipv6_dropped, dhcp_rewrites;
     uint32_t mgmt_ip;           /* shared management address, 0 = none yet */
-    bool mgmt_reachable;        /* it works on the Wi-Fi network (else the setup AP stays up) */
+    int mgmt_reach;             /* l2rw_reach_t: unknown / yes / no (a static address from another network) */
     bool dev_ip_leased;         /* the device's address comes from its DHCP lease */
     uint32_t mgmt_rx_frames, mgmt_tx_frames, mgmt_tx_err;
+    uint32_t mgmt_tx_waits;             /* WT32 frames that waited a tick for Wi-Fi buffers */
+    int mgmt_tx_last_err;               /* esp_err_t of the last dropped WT32 frame (0 = none) */
     int mgmt_flows;
     uint32_t mgmt_evictions;
 } client_stats_t;

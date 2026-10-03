@@ -108,7 +108,8 @@ size_t web_status_extra(char *buf, size_t pos, size_t cap)
         (unsigned long)s.dhcp_rewrites,
         mgmt, CONFIG_WT32_MGMT_PORT, (unsigned long)s.mgmt_rx_frames, (unsigned long)s.mgmt_tx_frames,
         (unsigned long)s.mgmt_tx_err, s.mgmt_flows, (unsigned long)s.mgmt_evictions,
-        s.mgmt_reachable ? "true" : "false", s.dev_ip_leased ? "true" : "false", (unsigned long)s.tx_wait_wifi);
+        s.mgmt_reach == L2RW_REACH_YES ? "true" : s.mgmt_reach == L2RW_REACH_NO ? "false" : "null",
+        s.dev_ip_leased ? "true" : "false", (unsigned long)s.tx_wait_wifi);
     return own_settings_json(buf, pos, cap);
 }
 

@@ -44,6 +44,7 @@ void l2rw_forget(l2rw_t *st)
     memset(st->dev_mac, 0, 6);
     st->dev_ip = st->cand_ip = 0;
     st->net_seen = false;
+    st->dhcp_pending = false;
     st->lease_ip = st->lease_mask = st->lease_gw = st->lease_dns = 0;
 }
 
@@ -106,7 +107,15 @@ static void note_wifi_ip(l2rw_t *st, uint32_t ip)
     }
 }
 
-void l2rw_mgmt_addr(const l2rw_t *st, l2rw_addr_t *out)
+void l2rw_wifi_state(l2rw_t *st, bool up, uint32_t now_ms)
+{
+    if (up && !st->wifi_up) {
+        st->wifi_since_ms = now_ms;
+    }
+    st->wifi_up = up;
+}
+
+void l2rw_mgmt_addr(const l2rw_t *st, uint32_t now_ms, l2rw_addr_t *out)
 {
     memset(out, 0, sizeof(*out));
     out->ip = st->dev_ip;
@@ -119,7 +128,14 @@ void l2rw_mgmt_addr(const l2rw_t *st, l2rw_addr_t *out)
         out->gw = st->lease_gw;
         out->dns = st->lease_dns;
     }
-    out->reachable = out->from_lease || st->net_seen;
+    if (out->from_lease || st->net_seen) {
+        out->reach = L2RW_REACH_YES;
+    } else if (!st->wifi_up || now_ms - st->wifi_since_ms < L2RW_REACH_GRACE_MS ||
+               (st->dhcp_pending && now_ms - st->dhcp_tx_ms < L2RW_REACH_GRACE_MS)) {
+        out->reach = L2RW_REACH_UNKNOWN;        /* not heard enough yet, or a lease may be coming */
+    } else {
+        out->reach = L2RW_REACH_NO;
+    }
 }
 
 /* UDP checksum over the pseudo header and the datagram; udp_len is trusted
@@ -219,6 +235,7 @@ static void dhcp_snoop_ack(l2rw_t *st, const uint8_t *udp, size_t udp_len, uint3
         st->lease_mask = mask;
         st->lease_gw = gw;
         st->lease_dns = dns;
+        st->dhcp_pending = false;
         set_dev_ip(st, yiaddr, now);
     }
 }
@@ -289,8 +306,12 @@ l2rw_verdict_t l2rw_from_wired(l2rw_t *st, uint8_t *frame, size_t len, uint32_t 
         note_src_ip(st, sip, now_ms);
         size_t ulen;
         uint8_t *udp = ipv4_udp(frame, len, DHCP_CLIENT, DHCP_SERVER, &ulen);
-        if (udp && dhcp_swap(frame + ETH_HDR, udp, ulen, st->dev_mac, st->sta_mac)) {
-            st->dhcp_rewrites++;
+        if (udp) {
+            st->dhcp_pending = true;            /* until an ACK, or the grace period ends */
+            st->dhcp_tx_ms = now_ms;
+            if (dhcp_swap(frame + ETH_HDR, udp, ulen, st->dev_mac, st->sta_mac)) {
+                st->dhcp_rewrites++;
+            }
         }
     }
     return L2RW_FORWARD;

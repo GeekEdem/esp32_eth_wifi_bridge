@@ -109,7 +109,7 @@ cd tools/c3-programmer
 # or: idf.py set-target esp32c3 && idf.py build flash
 ```
 
-Wi-Fi and the setup portal are the shared component [`shared/wifi_setup`](../../shared/wifi_setup). Dependencies (`rfc2217-server`, `mdns`) are pulled from GitHub. Pins, RFC2217 port, Wi-Fi TX power: `idf.py menuconfig` → *C3 Programmer Configuration*.
+Wi-Fi and the setup portal are the shared component [`shared/wifi_setup`](../../shared/wifi_setup). `mdns` is pulled from GitHub; `rfc2217-server` v0.4.0 is kept in [`components/rfc2217-server`](components/rfc2217-server) with a patch that adds TCP keepalive (see its `PATCHES.md`). Pins, RFC2217 port, Wi-Fi TX power: `idf.py menuconfig` → *C3 Programmer Configuration*.
 
 Page texts: [`main/i18n/<code>.json`](main/i18n/) plus the shared ones in [`shared/wifi_setup/i18n/`](../../shared/wifi_setup/i18n/); a new language is a new `<code>.json` in both folders (details in [`wt32/README.md`](../../wt32/README.md#languages)). Test: `shared/wifi_setup/test` (login and languages).
 
@@ -117,8 +117,9 @@ Page texts: [`main/i18n/<code>.json`](main/i18n/) plus the shared ones in [`shar
 
 - One RFC2217 network client at a time.
 - Before 0.3.1 the first buffer purge from esptool/pyserial (`timeout while waiting for option 'purge'`) hung the connection thread, and the server then refused every new client until the C3 was restarted. Fixed in 0.3.1: flash the new `c3-programmer.bin` over USB (or `-ota.bin` through the page).
-- If the laptop disappears mid-session (sleep, Wi-Fi drop), the connection may stay open until TCP gives up, and until then new connections are not accepted. If EN (RTS) was asserted at that moment, the WT32 also stays in reset. Restart the C3 (BOOT 5–10 s) if that happens.
-- **Routing pitfall:** if the PC that runs esptool/miniterm also has a wired interface behind the WT32 (e.g. testing with the PC as the device), the OS may route the RFC2217 connection through the WT32 (on Windows, Ethernet metric 5 is below Wi-Fi's 35). An RTS reset then cuts the connection that carries it, the WT32 stays in reset and the C3 accepts no new client until it is restarted (BOOT 5–10 s, or a USB reset). Reproduced on 0.4.0 and 0.4.1. Bind the client to the other interface or add a host route to the C3.
+- If the laptop disappears mid-session (sleep, Wi-Fi drop), since 0.4.2 the C3 notices within about 15 s (TCP keepalive, `menuconfig` → *Drop an RFC2217 client…*), drops the connection, releases EN and IO0 and accepts the next client. Before 0.4.2 the connection stayed open until TCP gave up, no new client was accepted, and if EN (RTS) was asserted at that moment the WT32 stayed in reset until the C3 was restarted (BOOT 5–10 s). Not verified on hardware yet.
+- Since 0.4.2, EN held by a client for more than 3 s with no further control request is released together with IO0, and the log says so (`menuconfig` → *Release EN…*; esptool and idf.py hold it ~100 ms). A side effect: miniterm started without `--rts 0` no longer keeps the WT32 in reset for more than 3 s. Not verified on hardware yet.
+- **Routing pitfall:** if the PC that runs esptool/miniterm also has a wired interface behind the WT32 (e.g. testing with the PC as the device), the OS may route the RFC2217 connection through the WT32 (on Windows, Ethernet metric 5 is below Wi-Fi's 35). An RTS reset then cuts the connection that carries it, the WT32 stays in reset and the C3 accepts no new client until it is restarted (BOOT 5–10 s, or a USB reset). Reproduced on 0.4.0 and 0.4.1; 0.4.2 releases EN after 3 s and drops the dead connection within ~15 s (not verified on hardware yet). Either way, bind the client to the other interface or add a host route to the C3.
 - The page is password-protected (default `12345678`), but the RFC2217 port itself (4000) has no password: anyone on the same network can flash or reset the WT32. Acceptable for a home bench.
 - The setup access point is open (no Wi-Fi password); the page behind it is password-protected.
 - Wi-Fi TX power is lowered to 8.5 dBm by default — the usual fix for SuperMini antenna problems. If the link is weak, change it in `menuconfig`.

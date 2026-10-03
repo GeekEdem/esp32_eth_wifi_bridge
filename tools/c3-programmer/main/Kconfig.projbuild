@@ -64,6 +64,23 @@ menu "C3 Programmer Configuration"
             Guards the bootloader strapping against network jitter when the
             DTR/RTS sequence arrives over RFC2217.
 
+    config C3PROG_EN_HOLD_MAX_MS
+        int "Release EN (and IO0) if a client holds EN this long (ms, 0 = never)"
+        default 3000
+        help
+            esptool and idf.py pulse RTS (EN) for about 100 ms. A client that
+            vanished while EN was asserted would otherwise keep the target in
+            reset forever. Any SET-CONTROL from the client restarts the timer.
+
+    config C3PROG_CLIENT_KEEPALIVE_S
+        int "Drop an RFC2217 client that stopped answering after about (s, 0 = never)"
+        default 15
+        help
+            TCP keepalive on the client connection: the first probe after a
+            third of this time without traffic, then probes every 2 s. Frees the
+            server (one client at a time) and releases the target when a laptop
+            sleeps or its route to the C3 is gone.
+
     config C3PROG_BUTTON_GPIO
         int "Button GPIO (-1 = none)"
         default 9

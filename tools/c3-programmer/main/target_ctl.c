@@ -19,6 +19,7 @@ static const char *TAG = "target";
 
 static SemaphoreHandle_t s_lock;
 static esp_timer_handle_t s_boot_release_timer;
+static esp_timer_handle_t s_en_watchdog;
 static bool s_en_asserted;
 static bool s_boot_asserted;
 static bool s_boot_release_pending;
@@ -39,6 +40,37 @@ static void boot_release_cb(void *arg)
         s_en_release_us = 0;
         drive(BOOT_GPIO, false);
     }
+    xSemaphoreGive(s_lock);
+}
+
+/* EN held too long with no word from the client: let the target run. */
+static void en_watchdog_cb(void *arg)
+{
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    bool held = s_en_asserted;
+    xSemaphoreGive(s_lock);
+    if (held) {
+        ESP_LOGW(TAG, "EN held for %d ms with no control request: releasing EN and IO0",
+                 CONFIG_C3PROG_EN_HOLD_MAX_MS);
+        target_release();
+    }
+}
+
+/* Under s_lock. */
+static void en_watchdog_arm(void)
+{
+#if CONFIG_C3PROG_EN_HOLD_MAX_MS > 0
+    esp_timer_stop(s_en_watchdog);
+    if (s_en_asserted) {
+        esp_timer_start_once(s_en_watchdog, (uint64_t)CONFIG_C3PROG_EN_HOLD_MAX_MS * 1000);
+    }
+#endif
+}
+
+void target_ctl_touch(void)
+{
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    en_watchdog_arm();
     xSemaphoreGive(s_lock);
 }
 
@@ -66,7 +98,12 @@ esp_err_t target_ctl_init(void)
         .callback = boot_release_cb,
         .name = "boot_hold",
     };
-    return esp_timer_create(&targs, &s_boot_release_timer);
+    ESP_RETURN_ON_ERROR(esp_timer_create(&targs, &s_boot_release_timer), TAG, "boot timer");
+    const esp_timer_create_args_t wargs = {
+        .callback = en_watchdog_cb,
+        .name = "en_watchdog",
+    };
+    return esp_timer_create(&wargs, &s_en_watchdog);
 }
 
 void target_set_en(bool asserted)
@@ -79,6 +116,7 @@ void target_set_en(bool asserted)
     }
     s_en_asserted = asserted;
     drive(EN_GPIO, asserted);
+    en_watchdog_arm();
     xSemaphoreGive(s_lock);
 }
 
@@ -90,6 +128,7 @@ void target_set_boot(bool asserted)
         esp_timer_stop(s_boot_release_timer);
         s_boot_asserted = true;
         drive(BOOT_GPIO, true);
+        en_watchdog_arm();
     } else if (s_boot_asserted && !s_boot_release_pending) {
         int64_t since = s_en_release_us ? esp_timer_get_time() - s_en_release_us : BOOT_HOLD_US;
         if (since < BOOT_HOLD_US) {
@@ -144,6 +183,7 @@ void target_release(void)
     s_en_asserted = false;
     s_boot_asserted = false;
     s_en_release_us = 0;
+    esp_timer_stop(s_en_watchdog);
     drive(EN_GPIO, false);
     drive(BOOT_GPIO, false);
     xSemaphoreGive(s_lock);

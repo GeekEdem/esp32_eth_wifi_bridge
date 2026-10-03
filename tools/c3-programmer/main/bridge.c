@@ -91,6 +91,7 @@ static unsigned on_baudrate(void *ctx, unsigned baudrate)
 
 static rfc2217_control_t on_control(void *ctx, rfc2217_control_t requested)
 {
+    target_ctl_touch();                 /* the client is alive: restart the EN watchdog */
     switch ((int)requested) {
     case RFC2217_CONTROL_SET_RTS:
         target_set_en(true);
@@ -232,6 +233,11 @@ esp_err_t bridge_start(void)
         .task_stack_size = 4096,
         .task_priority = SERVER_PRIORITY,
         .task_core_id = 0,
+        /* A client that vanished is dropped, so on_disconnected() releases the
+         * target and the next client can connect (patched component). */
+        .keepalive_idle_s = CONFIG_C3PROG_CLIENT_KEEPALIVE_S ? (CONFIG_C3PROG_CLIENT_KEEPALIVE_S + 2) / 3 : 0,
+        .keepalive_interval_s = 2,
+        .keepalive_count = CONFIG_C3PROG_CLIENT_KEEPALIVE_S > 3 ? (CONFIG_C3PROG_CLIENT_KEEPALIVE_S * 2 / 3) / 2 : 1,
     };
     ESP_RETURN_ON_ERROR(rfc2217_server_create(&cfg, &s_server), TAG, "rfc2217 create");
     esp_err_t err = rfc2217_server_start(s_server) == 0 ? ESP_OK : ESP_FAIL;

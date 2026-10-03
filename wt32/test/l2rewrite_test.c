@@ -39,20 +39,21 @@ static size_t ip4(uint8_t*f,const uint8_t*mac,int a,int b,int c,int d){
 static const uint8_t HOST[6]={0x00,0xaa,0xbb,0xcc,0xdd,0xee};
 static void address_tests(void){
   l2rw_t st; l2rw_init(&st,STA,false); uint8_t f[600]; l2rw_addr_t a; uint32_t t=1000;
-  /* no address yet: not reachable */
-  l2rw_mgmt_addr(&st,&a); assert(a.ip==0 && !a.reachable);
+  l2rw_wifi_state(&st,true,t-L2RW_REACH_GRACE_MS);   /* connected long enough (timing: grace_tests) */
+  /* no address yet: unknown */
+  l2rw_mgmt_addr(&st,t,&a); assert(a.ip==0 && a.reach==L2RW_REACH_UNKNOWN);
   /* link-local and 0.0.0.0 sources are not the device's address */
   arp(f,DEV,169,254,3,4); l2rw_from_wired(&st,f,60,t); assert(st.dev_ip==0);
   arp(f,DEV,0,0,0,0); l2rw_from_wired(&st,f,60,t); assert(st.dev_ip==0);
   /* a static address: taken, but not reachable until its subnet is heard on Wi-Fi */
   ip4(f,DEV,192,168,1,77); l2rw_from_wired(&st,f,60,t); assert(st.dev_ip==IP(192,168,1,77));
-  l2rw_mgmt_addr(&st,&a); assert(a.ip==IP(192,168,1,77) && !a.from_lease && !a.reachable && a.mask==IP(255,255,255,0));
+  l2rw_mgmt_addr(&st,t,&a); assert(a.ip==IP(192,168,1,77) && !a.from_lease && a.reach==L2RW_REACH_NO && a.mask==IP(255,255,255,0));
   arp(f,HOST,192,168,50,1); l2rw_to_wired(&st,f,60,t);           /* home network is 192.168.50.0/24 */
-  l2rw_mgmt_addr(&st,&a); assert(!a.reachable);
+  l2rw_mgmt_addr(&st,t,&a); assert(a.reach!=L2RW_REACH_YES);
   arp(f,HOST,192,168,1,77); l2rw_to_wired(&st,f,60,t);           /* its own address echoed: no proof */
-  l2rw_mgmt_addr(&st,&a); assert(!a.reachable);
+  l2rw_mgmt_addr(&st,t,&a); assert(a.reach!=L2RW_REACH_YES);
   arp(f,HOST,192,168,1,5); l2rw_to_wired(&st,f,60,t);            /* a neighbour in 192.168.1.0/24 */
-  l2rw_mgmt_addr(&st,&a); assert(a.reachable);
+  l2rw_mgmt_addr(&st,t,&a); assert(a.reach==L2RW_REACH_YES);
   /* a second address used in between does not move it */
   for(int i=0;i<200;i++){ ip4(f,DEV,192,168,1,(i&1)?78:77); l2rw_from_wired(&st,f,60,t+i*1000); }
   assert(st.dev_ip==IP(192,168,1,77));
@@ -63,7 +64,7 @@ static void address_tests(void){
   /* the device really moved: the old address silent 30 s, the new one in use */
   ip4(f,DEV,10,0,0,9); l2rw_from_wired(&st,f,60,t+L2RW_IP_SWITCH_MS); assert(st.dev_ip==IP(192,168,1,77));
   ip4(f,DEV,10,0,0,9); l2rw_from_wired(&st,f,60,t+L2RW_IP_SWITCH_MS+10); assert(st.dev_ip==IP(10,0,0,9));
-  l2rw_mgmt_addr(&st,&a); assert(!a.reachable);   /* new subnet not proven yet */
+  l2rw_mgmt_addr(&st,t,&a); assert(a.reach!=L2RW_REACH_YES);   /* new subnet not proven yet */
   /* DHCP: the lease wins at once and is reachable; mask and gateway from it */
   t+=100000;
   size_t n=dhcp(f,(uint8_t[]){0xaa,0xbb,0xcc,0,0,1},STA,DEV,0,5);
@@ -74,7 +75,7 @@ static void address_tests(void){
     size_t ulen=e-u; u[4]=ulen>>8;u[5]=ulen&255; f[16]=(20+ulen)>>8; f[17]=(20+ulen)&255; n=14+20+ulen; }
   l2rw_to_wired(&st,f,n,t);
   assert(st.dev_ip==IP(192,168,50,157));
-  l2rw_mgmt_addr(&st,&a); assert(a.from_lease && a.reachable && a.mask==IP(255,255,0,0) && a.gw==IP(192,168,50,1));
+  l2rw_mgmt_addr(&st,t,&a); assert(a.from_lease && a.reach==L2RW_REACH_YES && a.mask==IP(255,255,0,0) && a.gw==IP(192,168,50,1));
   /* traffic from the old static address right after the ACK does not undo it */
   ip4(f,DEV,10,0,0,9); l2rw_from_wired(&st,f,60,t+5); ip4(f,DEV,10,0,0,9); l2rw_from_wired(&st,f,60,t+10);
   assert(st.cand_ip==IP(10,0,0,9));     /* (the frames did count) */
@@ -86,14 +87,63 @@ static void address_tests(void){
   t+=100*1000;
   ip4(f,DEV,192,168,50,20); l2rw_from_wired(&st,f,60,t); ip4(f,DEV,192,168,50,20); l2rw_from_wired(&st,f,60,t+L2RW_IP_SWITCH_MS);
   assert(st.dev_ip==IP(192,168,50,20) && st.lease_ip==0);
-  l2rw_mgmt_addr(&st,&a); assert(!a.from_lease && !a.reachable);
+  l2rw_mgmt_addr(&st,t,&a); assert(!a.from_lease && a.reach!=L2RW_REACH_YES);
   arp(f,HOST,192,168,50,1); l2rw_to_wired(&st,f,60,t+L2RW_IP_SWITCH_MS+1);
-  l2rw_mgmt_addr(&st,&a); assert(a.reachable);
+  l2rw_mgmt_addr(&st,t,&a); assert(a.reach==L2RW_REACH_YES);
   /* forget clears everything */
-  l2rw_forget(&st); l2rw_mgmt_addr(&st,&a); assert(a.ip==0 && !a.reachable);
+  l2rw_forget(&st); l2rw_mgmt_addr(&st,t,&a); assert(a.ip==0 && a.reach!=L2RW_REACH_YES);
 }
+/* DHCP ACK from the router for the device, leasing a.b.c.d */
+static size_t ack(uint8_t*f,int a,int b,int c,int d){
+  size_t n=dhcp(f,(uint8_t[]){0xaa,0xbb,0xcc,0,0,1},STA,STA,0,5);
+  uint8_t yi[4]={a,b,c,d}; memcpy(f+34+8+16,yi,4); return n; }
+static l2rw_reach_t reach(l2rw_t*st,uint32_t t){ l2rw_addr_t a; l2rw_mgmt_addr(st,t,&a); return a.reach; }
+/* "Unreachable" only once Wi-Fi has been up for the grace period with no DHCP
+ * exchange of the device in flight; before that: unknown (no warning). */
+static void grace_tests(void){
+  const uint32_t G=L2RW_REACH_GRACE_MS; l2rw_t st; uint8_t f[600]; size_t n;
+  uint8_t bc[6]={0xff,0xff,0xff,0xff,0xff,0xff};
+  /* 1. boot: a static address learned before Wi-Fi is up */
+  l2rw_init(&st,STA,false);
+  arp(f,DEV,192,168,1,77); l2rw_from_wired(&st,f,60,100);
+  assert(reach(&st,100)==L2RW_REACH_UNKNOWN && reach(&st,100+5*G)==L2RW_REACH_UNKNOWN);   /* Wi-Fi down */
+  l2rw_wifi_state(&st,true,2000);
+  assert(reach(&st,2000)==L2RW_REACH_UNKNOWN && reach(&st,2000+G-1)==L2RW_REACH_UNKNOWN);
+  assert(reach(&st,2000+G)==L2RW_REACH_NO);
+  l2rw_wifi_state(&st,true,2000+G+500);                  /* repeated "up": the clock does not restart */
+  assert(reach(&st,2000+G+500)==L2RW_REACH_NO);
+  /* Wi-Fi lost and back: unknown again for the grace period */
+  l2rw_wifi_state(&st,false,40000); assert(reach(&st,40000)==L2RW_REACH_UNKNOWN);
+  l2rw_wifi_state(&st,true,41000); assert(reach(&st,41000+G-1)==L2RW_REACH_UNKNOWN && reach(&st,41000+G)==L2RW_REACH_NO);
+  /* a neighbour heard: yes at once, even inside the grace period */
+  l2rw_wifi_state(&st,false,60000); l2rw_wifi_state(&st,true,61000);
+  arp(f,HOST,192,168,1,5); l2rw_to_wired(&st,f,60,61001);
+  assert(reach(&st,61001)==L2RW_REACH_YES);
+  /* 2. the boot seen on hardware: static source first, then DHCP; never "no" */
+  l2rw_init(&st,STA,false);
+  arp(f,DEV,10,0,0,9); l2rw_from_wired(&st,f,60,0);       /* old address before DHCP */
+  l2rw_wifi_state(&st,true,500);
+  n=dhcp(f,DEV,bc,DEV,1,1); l2rw_from_wired(&st,f,n,800);   /* DISCOVER */
+  for(uint32_t t=800;t<1500;t+=50) assert(reach(&st,t)==L2RW_REACH_UNKNOWN);
+  n=ack(f,192,168,50,157); l2rw_to_wired(&st,f,n,1500);
+  assert(st.dev_ip==IP(192,168,50,157) && reach(&st,1500)==L2RW_REACH_YES && reach(&st,1500+10*G)==L2RW_REACH_YES);
+  /* 3. DHCP in flight keeps it unknown after the Wi-Fi grace, until it times out */
+  l2rw_init(&st,STA,false);
+  l2rw_wifi_state(&st,true,0);
+  arp(f,DEV,10,0,0,9); l2rw_from_wired(&st,f,60,1);
+  n=dhcp(f,DEV,bc,DEV,1,1); l2rw_from_wired(&st,f,n,11000);  /* DISCOVER, no answer */
+  assert(reach(&st,G)==L2RW_REACH_UNKNOWN && reach(&st,11000+G-1)==L2RW_REACH_UNKNOWN);
+  assert(reach(&st,11000+G)==L2RW_REACH_NO);
+  n=ack(f,10,0,0,9); l2rw_to_wired(&st,f,n,30000);          /* a late ACK */
+  assert(reach(&st,30000)==L2RW_REACH_YES && !st.dhcp_pending);
+  /* forget clears the pending exchange */
+  n=dhcp(f,DEV,bc,DEV,1,3); l2rw_from_wired(&st,f,n,31000); assert(st.dhcp_pending);
+  l2rw_forget(&st); assert(!st.dhcp_pending && reach(&st,31000)==L2RW_REACH_UNKNOWN);
+}
+
 int main(void){
   address_tests();
+  grace_tests();
   l2rw_t st; l2rw_init(&st,STA,false); uint8_t f[600]; size_t n;
   uint8_t bc[6]={0xff,0xff,0xff,0xff,0xff,0xff};
   /* 1. DHCP discover from device */
