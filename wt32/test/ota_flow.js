@@ -8,7 +8,7 @@ const assert = require('assert');
   const [port, merged, ota] = process.argv.slice(2);
   const base = `http://127.0.0.1:${port}`;
   const b = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
-  const p = await b.newPage();
+  const p = await b.newPage({ locale: 'en-US' })   /* the texts below are English, whatever the host's language */;
   const errors = []; p.on('pageerror', e => errors.push(e.message));
   const login = async () => {
     await p.waitForSelector('#loginOv', { timeout: 20000 });

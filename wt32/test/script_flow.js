@@ -7,7 +7,7 @@ const assert = require('assert');
 (async () => {
   const base = `http://127.0.0.1:${process.argv[2]}`;
   const b = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
-  const p = await b.newPage();
+  const p = await b.newPage({ locale: 'en-US' })   /* the texts below are English, whatever the host's language */;
   const errors = []; p.on('pageerror', e => errors.push(e.message));
   const text = sel => p.textContent(sel);
   const waitText = (fn, arg) => p.waitForFunction(fn, arg, { timeout: 10000 });
