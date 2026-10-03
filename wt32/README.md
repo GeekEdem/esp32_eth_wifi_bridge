@@ -185,7 +185,7 @@ Result: ✅ verified on hardware, with the WT32 firmware version it was verified
 
 | # | Action | Expected | Result |
 |---|---|---|---|
-| 35 | Power on the WT32 with the display | log `SSD1306 at 0x3C` (or 0x3D); the display shows the first page (titled with the mode), text is readable, not mirrored | ✅ 0.8.2: readable, not mirrored (log line not captured); a two-colour module cut the first line at the colour boundary, layout changed in 0.8.4 |
+| 35 | Power on the WT32 with the display | log `SSD1306 at 0x3C` (or 0x3D); the display shows the first page (titled with the mode), text is readable, not mirrored | ✅ 0.8.2: readable, not mirrored (log line not captured); a two-colour module cut the first line at the colour boundary; 0.8.4: the title in the yellow strip, the lines below it |
 | 36 | Press the button briefly, repeatedly | pages cycle, the number is in the title | |
 | 37 | Leave it for 1 min; then press | the display turns off; the first press only turns it on | |
 | 38 | Hold for 3 s and release | the display shows "Hold until 5 s:" and a bar; nothing happens after release | |

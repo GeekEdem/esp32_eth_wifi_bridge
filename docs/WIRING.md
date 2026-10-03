@@ -73,4 +73,5 @@ If `.local` names do not resolve (common on Windows without Bonjour), use the C3
 
 - The OLED's pin order differs between modules (GND-VCC-SCL-SDA or VCC-GND-SCL-SDA): wire by the names printed on yours.
 - The display and the button are optional. What the button does (short press, 5 s, 10 s) is described in [`wt32/README.md`](../wt32/README.md).
+- The green LED on the RJ45 jack stays lit with no cable plugged in, even while the WT32 sits in its ROM bootloader (no firmware running): it is the board's wiring of the Ethernet chip's LED pins, not a link. The link state is in the log (`eth: link up …` / `eth down`) and on the display's Device page.
 - In the case the wires are soldered to the pins; Dupont connectors do not fit in height (see [`hardware/case/README.md`](../hardware/case/README.md)).
