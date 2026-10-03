@@ -4,7 +4,7 @@
 
 Main firmware. The WT32 is connected by cable to **one** device (any device) and gives it Wi-Fi (or, in Access point mode, shares the router's network from the cable over Wi-Fi). The firmware knows nothing about the device and does not change its data — it only forwards frames.
 
-> Status: built (ESP-IDF 6.1); the forwarding, management port and script logic is tested on a PC, the page in a browser against a mock API. **On hardware** (0.8.2 and earlier): Client mode with a device (link, device MAC/IP, ping, normal use, longer transfers, a WT32 restart, the page on the management port), the firmware update through the page with rollback confirmation, and Berry scripts (checklist items 1–5, 7, 8, 10–13, 27–41); see [Bench results](#bench-results-2026-09-30--2026-10-03). The display and the button (items 35–38, 41) and mDNS (`wt32.local`) work too; Router and Access point modes are not verified yet.
+> Status: built (ESP-IDF 6.1); the forwarding, management port and script logic is tested on a PC, the page in a browser against a mock API. **On hardware** (0.8.2 and earlier): Client mode with a device (link, device MAC/IP, ping, normal use, longer transfers, a WT32 restart, the page on the management port), the firmware update through the page with rollback confirmation, and Berry scripts (checklist items 1–8, 10–13, 27–41); see [Bench results](#bench-results-2026-09-30--2026-10-03). The display and the button (items 35–38, 41) and mDNS (`wt32.local`) work too; Router and Access point modes are not verified yet.
 
 ## Three modes (chosen on the page, applied after a restart)
 
@@ -20,6 +20,7 @@ The WT32 connects to an existing Wi-Fi network. The device gets an IP from that 
 - Lease-first addressing (0.7.2) is verified on hardware: the page shows "(DHCP)" once the device takes a lease, and the address no longer flaps. On 0.7.1 a dock that briefly sent from two IPv4 addresses after a re-lease made the management address flip every 1–3 s.
 - The test printer came with a static address from another network; before 0.7.2 that left the WT32 unreachable. The 0.7.2 behaviour for this case (the setup access point stays on) has not been re-tested on hardware.
 - IPv6 is not forwarded (MACs in neighbor discovery packets are not rewritten).
+- Vendor tools that look the device up by its own MAC in the PC's ARP table (`arp -a`) cannot find it: the network sees the WT32 station MAC. Discovery by UDP broadcast works (the device's MAC inside the reply is not touched).
 
 ### Router
 The WT32 runs its own Wi-Fi network (WPA2/WPA3). The access point and Ethernet are one network with a DHCP server on the WT32: the device on the cable and phones get addresses and see each other. There is no internet (NAT is not needed: there is nowhere to go).
@@ -131,7 +132,7 @@ Result: ✅ verified on hardware, with the WT32 firmware version it was verified
 | 3 | From a PC: `ping <IP>` | replies | ✅ 0.7.0; 0.8.0: 4–9 ms |
 | 4 | Normal use of the device at `<IP>` | works | ✅ 0.7.0 |
 | 5 | Longer transfer (large file, several jobs in a row) | works without interruptions | ✅ 0.8.0 (a PC as the device): 20 s each way, 6.8 / 7.8 Mbit/s, 0 % ping loss (see Bench results) |
-| 6 | Vendor utility → search for the device on the network | finds it / doesn't (write down) | 0.8.4: the test printer's utility does not find it (cause not investigated yet) |
+| 6 | Vendor utility → search for the device on the network | finds it / doesn't (write down) | ✅ 0.8.4: the test device's vendor tool finds it with its UDP broadcast search. A tool that sends from another local adapter (here a Hyper-V/WSL virtual one) finds nothing: that is the PC, not the WT32. A search by the device's MAC in the ARP table cannot work in Client mode (see Client) |
 | 7 | Turn the device off and on | same IP (only with a DHCP reservation for the WT32 station MAC on the router), normal use works | ✅ 0.8.4 with a reservation: the same address by DHCP, the printer reachable 30 s after it was switched off and on (mostly its own boot); 0.8.0 without one: a different address |
 | 8 | Restart the WT32 (device stays on) | connection comes back without restarting the device | ✅ 0.7.2, 0.8.0: link back in 3.3 s, the device redoes DHCP, router reachable at 5.1 s |
 | 9 | Restart the router | connection comes back by itself | |
