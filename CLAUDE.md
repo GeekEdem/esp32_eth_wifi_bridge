@@ -80,6 +80,8 @@ python3 ../../shared/wifi_setup/tools/i18n_bundle.py check --complete ../main/i1
 # C3 page: shared/wifi_setup/test (mock_portal.py <page> <auth.js> <port> <app i18n dir> + login_flow.js, i18n_flow.js)
 ```
 
+On Windows the C tests, the Berry host test and the scapy test run with MSYS2 CLANG64 clang (ASan/UBSan work): `cc` must be on PATH (e.g. a hard link `cc.exe` -> `clang.exe` in `clang64/bin`), and `run_host_test.sh` also needs `python3`. The `rfc2217_lwip` test needs Linux (root, tap, iptables).
+
 Keep pure logic (frame parsing, demux) free of ESP-IDF headers so it stays host-testable.
 
 ## Key behaviours

@@ -14,8 +14,12 @@
 #include <time.h>
 #include "berry.h"
 
-/* --- same budget semantics as script_runtime.c --- */
-typedef struct { size_t size; } mhdr_t;
+/* --- same budget semantics as script_runtime.c. The header keeps malloc's
+ * alignment for the block behind it: a bare size_t leaves it 8-aligned on a
+ * 64-bit host, and Berry's struct blongjmp (a jmp_buf) needs 16 on Windows x64
+ * (longjmp crashes). On the WT32 (Xtensa) a 4-byte header is enough: jmp_buf
+ * and the heap are 4-aligned there. --- */
+typedef struct { size_t size; } __attribute__((aligned(16))) mhdr_t;   /* built as gnu99: no max_align_t */
 static size_t mem_used, mem_limit = 40 * 1024;
 void *script_be_realloc(void *ptr, size_t size);
 void *script_be_malloc(size_t s) { return script_be_realloc(NULL, s); }
