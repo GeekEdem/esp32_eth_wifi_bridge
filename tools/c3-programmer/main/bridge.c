@@ -18,6 +18,7 @@
 #include "esp_check.h"
 #include "esp_log.h"
 #include "esp_pthread.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
@@ -56,6 +57,17 @@ static SemaphoreHandle_t s_purge_done;     /* uart_rx_task -> on_purge() */
 static volatile bool s_client;
 static volatile uint32_t s_activity;
 
+/* Client liveness (client_check_cb). TCP keepalive only acts on an idle
+ * connection: once the C3 has unacknowledged data for a client that is gone
+ * (the target's log after a reset), lwIP retransmits with growing pauses and
+ * the connection lingers for 30 s or more, blocking the next client. */
+#define CHECK_PERIOD_US  1000000
+#define PROBE_AFTER_US   ((int64_t)CONFIG_C3PROG_CLIENT_KEEPALIVE_S * 2 / 3 * 1000000)
+#define ANSWER_WITHIN_US ((int64_t)CONFIG_C3PROG_CLIENT_KEEPALIVE_S * 1000000 - PROBE_AFTER_US)
+static uint32_t s_rx_seen;      /* rfc2217_server_rx_count() at s_rx_at */
+static int64_t s_rx_at;         /* last time the client sent anything */
+static int64_t s_probe_at;      /* probe queued, waiting for an answer; else 0 */
+
 bool bridge_client_connected(void)
 {
     return s_client;
@@ -69,6 +81,9 @@ uint32_t bridge_activity(void)
 static void on_connected(void *ctx)
 {
     ESP_LOGI(TAG, "RFC2217 client connected");
+    s_rx_seen = rfc2217_server_rx_count(s_server);
+    s_rx_at = esp_timer_get_time();
+    s_probe_at = 0;
     s_client = true;
 }
 
@@ -140,6 +155,41 @@ static void on_data_received(void *ctx, const uint8_t *data, size_t len)
     uart_write_bytes(UART_NUM, data, len);
     s_activity += len;
 }
+
+/* Every second while a client is connected: after PROBE_AFTER_US of silence
+ * ask it for an answer; none within ANSWER_WITHIN_US of the probe (or no probe
+ * could be queued in that time, because a send is stuck on the connection) ->
+ * drop it, so on_disconnected() runs and the next client can connect. */
+#if CONFIG_C3PROG_CLIENT_KEEPALIVE_S > 0
+static void client_check_cb(void *arg)
+{
+    if (!s_client) {
+        return;
+    }
+    int64_t now = esp_timer_get_time();
+    uint32_t rx = rfc2217_server_rx_count(s_server);
+    if (rx != s_rx_seen) {
+        s_rx_seen = rx;
+        s_rx_at = now;
+        s_probe_at = 0;
+        return;
+    }
+    if (now - s_rx_at < PROBE_AFTER_US) {
+        return;
+    }
+    if (s_probe_at == 0 && rfc2217_server_probe(s_server) == 0) {
+        s_probe_at = now;
+    }
+    int64_t since = s_probe_at ? s_probe_at : s_rx_at + PROBE_AFTER_US;
+    if (now - since >= ANSWER_WITHIN_US) {
+        ESP_LOGW(TAG, "RFC2217 client silent for %lld s and not answering: dropping it",
+                 (long long)((now - s_rx_at) / 1000000));
+        s_rx_at = now;                  /* once: on_disconnected() follows */
+        s_probe_at = 0;
+        rfc2217_server_disconnect(s_server);
+    }
+}
+#endif
 
 /* Target -> network and USB. */
 static void uart_rx_task(void *arg)
@@ -244,6 +294,12 @@ esp_err_t bridge_start(void)
     const esp_pthread_cfg_t def = esp_pthread_get_default_config();
     esp_pthread_set_cfg(&def);          /* later pthreads of this task: defaults again */
     ESP_RETURN_ON_ERROR(err, TAG, "rfc2217 start");
+#if CONFIG_C3PROG_CLIENT_KEEPALIVE_S > 0
+    const esp_timer_create_args_t targs = { .callback = client_check_cb, .name = "client_check" };
+    esp_timer_handle_t check_timer;
+    ESP_RETURN_ON_ERROR(esp_timer_create(&targs, &check_timer), TAG, "check timer");
+    ESP_RETURN_ON_ERROR(esp_timer_start_periodic(check_timer, CHECK_PERIOD_US), TAG, "check timer");
+#endif
     ESP_LOGI(TAG, "RFC2217 server on port %d", CONFIG_C3PROG_RFC2217_PORT);
     return ESP_OK;
 }

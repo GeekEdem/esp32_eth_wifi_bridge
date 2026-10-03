@@ -132,6 +132,21 @@ int rfc2217_server_start(rfc2217_server_t server);
  */
 int rfc2217_server_send_data(rfc2217_server_t server, const uint8_t *data, size_t len);
 
+/* Local additions (see PATCHES.md). */
+
+/** @brief Number of chunks received from the current or past clients (any data,
+ *         telnet negotiation included): unchanged means the client said nothing. */
+uint32_t rfc2217_server_rx_count(rfc2217_server_t server);
+
+/** @brief Ask the client for an answer (telnet DO TIMING-MARK), without blocking
+ * @return 0 if queued; -1 if no client, a send is in progress or the buffer is full */
+int rfc2217_server_probe(rfc2217_server_t server);
+
+/** @brief Drop the current client (shutdown of its socket); on_client_disconnected
+ *         follows from the receive thread
+ * @return 0 on success, -1 if no client */
+int rfc2217_server_disconnect(rfc2217_server_t server);
+
 /** @brief Stop RFC2217 server
  *
  * @param server RFC2217 server instance

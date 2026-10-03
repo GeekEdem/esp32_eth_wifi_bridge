@@ -102,7 +102,7 @@ Written from scratch; inspired by and built on ideas from:
 - the ESP-IDF example [`examples/network/sta2eth`](https://github.com/espressif/esp-idf/tree/master/examples/network/sta2eth): rewriting the device's MAC to the station's, used in Client mode;
 - [egnor/wt32-eth01](https://github.com/egnor/wt32-eth01): notes on the WT32-ETH01 and its 3D model, which the case checks use (downloaded at build time, not included).
 
-Third-party parts keep their own licenses: [Berry](https://github.com/berry-lang/berry) (MIT, git submodule), the misc-fixed 6×10 font (public domain, via [u8g2](https://github.com/olikraus/u8g2)); ESP-IDF, esp-protocols (mdns) and esp-eth-drivers (Apache-2.0) are fetched at build time; [rfc2217-server](https://github.com/igrr/rfc2217-server) (Apache-2.0) is kept in `tools/c3-programmer/components/` with a small patch (TCP keepalive).
+Third-party parts keep their own licenses: [Berry](https://github.com/berry-lang/berry) (MIT, git submodule), the misc-fixed 6×10 font (public domain, via [u8g2](https://github.com/olikraus/u8g2)); ESP-IDF, esp-protocols (mdns) and esp-eth-drivers (Apache-2.0) are fetched at build time; [rfc2217-server](https://github.com/igrr/rfc2217-server) (Apache-2.0) is kept in `tools/c3-programmer/components/` with small patches (TCP keepalive, dropping a client that stopped answering).
 
 ## License
 

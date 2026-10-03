@@ -34,6 +34,7 @@ static const char *TAG = "rfc2217_server";
 #define T_BINARY 0x00U
 #define T_ECHO 0x01U
 #define T_SGA 0x03U
+#define T_TIMING_MARK 0x06U
 
 // RFC2217
 #define T_COM_PORT_OPTION 0x2cU
@@ -114,6 +115,7 @@ struct rfc2217_server_s {
     size_t telnet_options_count;
     bool collecting_suboption;
     uint8_t telnet_command;
+    volatile uint32_t rx_count;     /* local addition: received chunks, see PATCHES.md */
 };
 
 static void *server_thread_fn(void *ctx /* rfc2217_server_t server */);
@@ -222,6 +224,7 @@ int rfc2217_server_create(const rfc2217_server_config_t *config, rfc2217_server_
 
     server->config = *config;
     server->telnet_mode = T_NORMAL;
+    server->client_socket = -1;     /* local addition: no client yet (calloc gives 0) */
     pthread_mutex_init(&server->tcp_send_mutex, NULL);
     *out_server = server;
     return 0;
@@ -321,8 +324,10 @@ void *server_thread_fn(void *ctx /* rfc2217_server_t server */)
 
         pthread_join(server->tcp_receive_thread, NULL);
 
-        shutdown(server->client_socket, 0);
-        close(server->client_socket);
+        int sock = server->client_socket;
+        server->client_socket = -1;     /* local addition: rfc2217_server_disconnect() */
+        shutdown(sock, 0);
+        close(sock);
     }
     ESP_LOGD(TAG, "Server thread shutting down");
 
@@ -354,6 +359,7 @@ static void *tcp_receive_thread_fn(void *ctx /* rfc2217_server_t server */)
         } else if (len == 0) {
             ESP_LOGI(TAG, "Connection closed");
         } else {
+            server->rx_count++;
             server->tcp_rx_buffer[len] = 0; // Null-terminate whatever is received and treat it like a string
 
             ESP_LOGD(TAG, "Received %d bytes:", (int) len);
@@ -510,6 +516,40 @@ int rfc2217_server_send_data(rfc2217_server_t server, const uint8_t *data, size_
     return 0;
 }
 
+
+/* Local additions (see PATCHES.md). */
+uint32_t rfc2217_server_rx_count(rfc2217_server_t server)
+{
+    return server->rx_count;
+}
+
+int rfc2217_server_probe(rfc2217_server_t server)
+{
+    /* DO TIMING-MARK: an option the server never negotiates, so a telnet
+     * client must answer it (WONT, or WILL), which rfc2217_server_rx_count()
+     * then shows. Never blocks: a send already waiting for the connection
+     * keeps the mutex, and a full send buffer gives EAGAIN. */
+    static const uint8_t probe[3] = {T_IAC, T_DO, T_TIMING_MARK};
+    int sock = server->client_socket;
+    if (sock < 0 || pthread_mutex_trylock(&server->tcp_send_mutex) != 0) {
+        return -1;
+    }
+    ssize_t n = send(sock, probe, sizeof(probe), MSG_DONTWAIT);
+    pthread_mutex_unlock(&server->tcp_send_mutex);
+    return n == (ssize_t)sizeof(probe) ? 0 : -1;
+}
+
+int rfc2217_server_disconnect(rfc2217_server_t server)
+{
+    /* Wakes the receive thread (and aborts a send waiting for the connection),
+     * which then runs on_client_disconnected; the server thread closes the
+     * socket and accepts the next client. */
+    int sock = server->client_socket;
+    if (sock < 0) {
+        return -1;
+    }
+    return shutdown(sock, SHUT_RDWR);
+}
 
 static void process_telnet_command(rfc2217_server_t server, uint8_t c)
 {

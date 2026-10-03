@@ -76,10 +76,15 @@ menu "C3 Programmer Configuration"
         int "Drop an RFC2217 client that stopped answering after about (s, 0 = never)"
         default 15
         help
-            TCP keepalive on the client connection: the first probe after a
-            third of this time without traffic, then probes every 2 s. Frees the
-            server (one client at a time) and releases the target when a laptop
-            sleeps or its route to the C3 is gone.
+            After two thirds of this time without anything from the client, the
+            C3 asks it for an answer (telnet DO TIMING-MARK, which pyserial
+            rejects with WONT) and drops the connection if none comes within
+            the last third. TCP keepalive (first probe after a third of this
+            time, then every 2 s) covers a client that has not finished the
+            RFC2217 negotiation. Frees the server (one client at a time) and
+            releases the target when a laptop sleeps or its route to the C3 is
+            gone; keepalive alone does not help while the C3 still has
+            unacknowledged data for the client (TCP retransmits instead).
 
     config C3PROG_BUTTON_GPIO
         int "Button GPIO (-1 = none)"
