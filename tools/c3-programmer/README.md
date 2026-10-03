@@ -8,7 +8,7 @@ Firmware for the **ESP32-C3 SuperMini** that turns it into a programmer and seri
 - **Over USB (fallback):** C3 USB ↔ WT32 UART at a fixed 115200. The bootloader is entered with the button or from the web page.
 - **Web page** `http://c3prog.local` (English / Ukrainian): Wi-Fi selection, status, **Restart** and **Download mode** buttons for the WT32, the C3's own firmware (version, build time, commit, SHA-256) and its update.
 
-> Status: built (ESP-IDF 6.1). **Verified on hardware** (C3 0.3.1–0.4.5, stock esptool 4.8.1 / pyserial 3.5 on Windows 11): `flash_id`, `read_flash` and `write_flash` over RFC2217 (at 460800 about 300 kbit/s effective: 1.2 MB in ~31 s), the log over `miniterm`, RTS → EN resets, repeated reconnects with buffer purges, `c3prog.local` over mDNS, the C3's page; on 0.4.2 the EN watchdog (the WT32 back in 6–10 s after a cut connection); on 0.4.3 a monitor that only reads stays connected (51 s without commands); on 0.4.5 the next client 15–17 s after the routing pitfall, and a second client waits in the queue without disturbing the first; on 0.4.5 the USB fallback path (the WT32's log on the C3's USB port; with the WT32 put into its ROM bootloader over RFC2217, esptool over USB with `--before no_reset --after no_reset` at 115200: `flash_id`, `read_mac`). Not verified yet: the BOOT button actions and the C3's own OTA through its page.
+> Status: built (ESP-IDF 6.1). **Verified on hardware** (C3 0.3.1–0.4.5, stock esptool 4.8.1 / pyserial 3.5 on Windows 11): `flash_id`, `read_flash` and `write_flash` over RFC2217 (at 460800 about 300 kbit/s effective: 1.2 MB in ~31 s), the log over `miniterm`, RTS → EN resets, repeated reconnects with buffer purges, `c3prog.local` over mDNS, the C3's page; on 0.4.2 the EN watchdog (the WT32 back in 6–10 s after a cut connection); on 0.4.3 a monitor that only reads stays connected (51 s without commands); on 0.4.5 the next client 15–17 s after the routing pitfall, and a second client waits in the queue without disturbing the first; on 0.4.5 the USB fallback path (the WT32's log on the C3's USB port; with the WT32 put into its ROM bootloader over RFC2217, esptool over USB with `--before no_reset --after no_reset` at 115200: `flash_id`, `read_mac`). On 0.4.5 the BOOT button: < 1 s put the WT32 into its ROM bootloader, 1–5 s restarted it, 5–10 s restarted the C3 without touching the WT32, ≥ 10 s forgot the Wi-Fi (the setup access point came up; the page password reset was not checked separately). Not verified yet: the C3's own OTA through its page.
 
 ## 1. Flash the C3 with the prebuilt binary
 
@@ -64,6 +64,8 @@ Diagram and first-flash steps: [`docs/WIRING.md`](../../docs/WIRING.md).
 | 1–5 s | restart the WT32 |
 | 5–10 s | restart the C3 itself |
 | ≥ 10 s | forget Wi-Fi and reset the page password to `12345678` (the C3 returns to setup mode) |
+
+Known issue (0.4.5): a hold past 10 s restarts the C3 while the button is still down, and the new boot takes the rest of the hold as a new press: on release it restarts the WT32 (1–5 s) or puts it into flash mode (< 1 s). Seen on hardware: the WT32 restarted 2 s after the C3. Release the button right after the C3 restarts, or reset the WT32 afterwards.
 
 LED: double blink — setup access point; 1 Hz — connecting to Wi-Fi; steady on — ready; flickering — data exchange with the WT32.
 
