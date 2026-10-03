@@ -16,7 +16,7 @@ Firmware for the **WT32-ETH01** (ESP32 + LAN8720) that gives Wi-Fi to a device w
 
 | Mode | How it works | WT32 page |
 |---|---|---|
-| **Client** (default) | The WT32 joins your Wi-Fi. The device gets its IP from your router and is reachable as if it were plugged into it | `http://<device IP>:28480` |
+| **Client** (default) | The WT32 joins your Wi-Fi. The device gets its IP from your router and is reachable as if it were plugged into it | `http://<device IP>:28480` or `http://wt32.local:28480` |
 | **Router** | The WT32 runs its own Wi-Fi with DHCP. The device and phones share one network, no internet | `http://192.168.77.1` |
 | **Access point** | The WT32's cable goes into a router; the WT32 shares that network over Wi-Fi | `http://wt32.local` |
 
