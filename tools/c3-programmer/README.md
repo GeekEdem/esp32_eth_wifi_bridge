@@ -111,7 +111,7 @@ cd tools/c3-programmer
 
 Wi-Fi and the setup portal are the shared component [`shared/wifi_setup`](../../shared/wifi_setup). `mdns` is pulled from GitHub; `rfc2217-server` v0.4.0 is kept in [`components/rfc2217-server`](components/rfc2217-server) with a patch that adds TCP keepalive (see its `PATCHES.md`). Pins, RFC2217 port, Wi-Fi TX power: `idf.py menuconfig` → *C3 Programmer Configuration*.
 
-Tests on a PC: `test/client_watch_test.c` (when to probe and drop; `cc -Wall -Wextra -fsanitize=address,undefined -Imain -o /tmp/cwt test/client_watch_test.c main/client_watch.c && /tmp/cwt`) and `test/rfc2217_lwip/` (the server on lwIP from ESP-IDF over a tap interface, the routing pitfall with iptables, needs root and pyserial: `build.sh /tmp/h && sudo python3 run.py /tmp/h`).
+Tests on a PC: `test/client_watch_test.c` (when to probe and drop; `cc -Wall -Wextra -fsanitize=address,undefined -Imain -o /tmp/cwt test/client_watch_test.c main/client_watch.c && /tmp/cwt`) and `test/rfc2217_lwip/` (the server on lwIP from ESP-IDF over a tap interface, the routing pitfall with iptables, needs root and pyserial: `build.sh /tmp/h && sudo python3 run.py /tmp/h`; `run.py --half-open` adds a connection attempt given up before the handshake and left half-open in lwIP, as on the bench with 0.4.2–0.4.4: with a listen backlog of 1 the next client waits ~20 s, since 0.4.5 ~17 s; runs in WSL2 too).
 
 Page texts: [`main/i18n/<code>.json`](main/i18n/) plus the shared ones in [`shared/wifi_setup/i18n/`](../../shared/wifi_setup/i18n/); a new language is a new `<code>.json` in both folders (details in [`wt32/README.md`](../../wt32/README.md#languages)). Test: `shared/wifi_setup/test` (login and languages).
 

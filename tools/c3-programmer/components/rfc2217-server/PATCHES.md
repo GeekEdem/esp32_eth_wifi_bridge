@@ -36,7 +36,10 @@ manager, with these changes:
   firewall in "stealth" mode answers nothing) in the only slot; lwIP keeps it
   for ~18 s (12 SYN-ACK retransmissions) and refuses every other client
   meanwhile, and the next impatient retry can do the same. The C3 uses 4.
-  Waiting clients are served one after another, as before.
+  Waiting clients are served one after another, as before. Host test:
+  `test/rfc2217_lwip/run.py --half-open` (its lwIP enforces the backlog as
+  ESP-IDF does, `TCP_LISTEN_BACKLOG 1`): ~20 s to the next client with a
+  backlog of 1, ~17 s with 4.
 
 Removed from the copy: examples, CI and tooling files. The rest is unchanged.
 Worth proposing upstream; until then, update this copy by hand.

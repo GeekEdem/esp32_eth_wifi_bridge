@@ -77,10 +77,11 @@ python3 ../../shared/wifi_setup/tools/i18n_bundle.py check --complete ../main/i1
 ../../shared/script_berry/test/run_host_test.sh    # Berry with our berry_conf.h: prelude, limits, errors
 # C3: cc ... -I../main -o /tmp/cwt client_watch_test.c ../main/client_watch.c (in tools/c3-programmer/test);
 #     rfc2217_lwip/build.sh /tmp/h && sudo python3 rfc2217_lwip/run.py /tmp/h (root, pyserial; next client <= 17 s)
+#     && sudo python3 rfc2217_lwip/run.py /tmp/h --half-open (a given-up connect left half-open: <= 18.5 s; ~20 s with backlog 1)
 # C3 page: shared/wifi_setup/test (mock_portal.py <page> <auth.js> <port> <app i18n dir> + login_flow.js, i18n_flow.js)
 ```
 
-On Windows the C tests, the Berry host test and the scapy test run with MSYS2 CLANG64 clang (ASan/UBSan work): `cc` must be on PATH (e.g. a hard link `cc.exe` -> `clang.exe` in `clang64/bin`), and `run_host_test.sh` also needs `python3`. The `rfc2217_lwip` test needs Linux (root, tap, iptables).
+On Windows the C tests, the Berry host test and the scapy test run with MSYS2 CLANG64 clang (ASan/UBSan work): `cc` must be on PATH (e.g. a hard link `cc.exe` -> `clang.exe` in `clang64/bin`), and `run_host_test.sh` also needs `python3`. The `rfc2217_lwip` test needs Linux (root, tap, iptables); WSL2 works (gcc, python3-serial, iptables; `IDF_PATH` on the Windows drive; strip CRLF from the scripts if the checkout has them).
 
 Keep pure logic (frame parsing, demux) free of ESP-IDF headers so it stays host-testable.
 

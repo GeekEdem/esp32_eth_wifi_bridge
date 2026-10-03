@@ -41,6 +41,7 @@
 #define TCP_OVERSIZE                TCP_MSS
 #define DEFAULT_TCP_RECVMBOX_SIZE   6
 #define DEFAULT_ACCEPTMBOX_SIZE     6
+#define TCP_LISTEN_BACKLOG          1           /* as ESP-IDF: listen()'s backlog is enforced */
 #define DEFAULT_UDP_RECVMBOX_SIZE   6
 #define TCPIP_MBOX_SIZE             32
 #define DEFAULT_THREAD_STACKSIZE    16384

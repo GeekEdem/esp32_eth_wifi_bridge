@@ -111,7 +111,7 @@ cd tools/c3-programmer
 
 Wi-Fi і портал налаштування — спільний компонент [`shared/wifi_setup`](../../shared/wifi_setup). `mdns` тягнеться з GitHub; `rfc2217-server` v0.4.0 лежить у [`components/rfc2217-server`](components/rfc2217-server) зі зміною, що додає TCP keepalive (див. його `PATCHES.md`). Піни, порт RFC2217, потужність Wi-Fi — `idf.py menuconfig` → *C3 Programmer Configuration*.
 
-Тести на ПК: `test/client_watch_test.c` (коли питати і коли рвати; `cc -Wall -Wextra -fsanitize=address,undefined -Imain -o /tmp/cwt test/client_watch_test.c main/client_watch.c && /tmp/cwt`) і `test/rfc2217_lwip/` (сервер на lwIP з ESP-IDF через tap-інтерфейс, пастка з маршрутом через iptables, потрібні root і pyserial: `build.sh /tmp/h && sudo python3 run.py /tmp/h`).
+Тести на ПК: `test/client_watch_test.c` (коли питати і коли рвати; `cc -Wall -Wextra -fsanitize=address,undefined -Imain -o /tmp/cwt test/client_watch_test.c main/client_watch.c && /tmp/cwt`) і `test/rfc2217_lwip/` (сервер на lwIP з ESP-IDF через tap-інтерфейс, пастка з маршрутом через iptables, потрібні root і pyserial: `build.sh /tmp/h && sudo python3 run.py /tmp/h`; `run.py --half-open` додає спробу зʼєднання, покинуту до завершення рукостискання, яка лишається напіввідкритою в lwIP, як на стенді з 0.4.2–0.4.4: з чергою прийому на одне місце наступний клієнт чекає ~20 с, від 0.4.5 — ~17 с; працює і у WSL2).
 
 Тексти сторінки: [`main/i18n/<code>.json`](main/i18n/) плюс спільні в [`shared/wifi_setup/i18n/`](../../shared/wifi_setup/i18n/); нова мова — новий `<code>.json` в обох теках (подробиці в [`wt32/README_UA.md`](../../wt32/README_UA.md#мови)). Тест: `shared/wifi_setup/test` (вхід і мови).
 

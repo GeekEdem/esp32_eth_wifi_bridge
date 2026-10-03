@@ -9,7 +9,14 @@ route that carries the connection. Client B then tries to connect once a second
 and the time until it gets in is printed. A second run checks that a client
 that only reads (no commands for longer than the probe time) is not dropped.
 
-Usage: sudo python3 run.py <harness> [--max S] [--quiet-client]
+--half-open adds, right after the cut, a connection attempt that was given up
+before the handshake completed and whose SYN-ACK goes unanswered: what the bench
+showed when esptool was run again while the dead client was still held (the
+retry's socket was closed when the C3's SYN-ACK came, and Windows' firewall sends
+no RST). lwIP keeps it half-open (SYN-RCVD) for ~20 s in the listen queue; with a
+backlog of 1 that blocks every other client meanwhile (C3 0.4.2-0.4.4).
+
+Usage: sudo python3 run.py <harness> [--max S] [--half-open]
 """
 import argparse, fcntl, os, socket, struct, subprocess, sys, threading, time
 import serial
@@ -41,6 +48,25 @@ def iptables(op, port):
         subprocess.run(['iptables', op, chain, '-p', 'tcp'] + args + ['-j', 'DROP'], check=True)
 
 
+HALF_OPEN_PORT = 40404
+
+
+def half_open(op):
+    """'-I': a connection attempt given up before the handshake completes; its
+    SYN-ACK (and lwIP's retransmissions of it) never reach the host, so the host
+    sends no RST either. '-D': remove the rule again."""
+    subprocess.run(['iptables', op, 'INPUT', '-i', TAP, '-p', 'tcp', '--sport', str(PORT),
+                    '--dport', str(HALF_OPEN_PORT), '-j', 'DROP'], check=True)
+    if op == '-I':
+        s = socket.socket()
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind((HOST_IP, HALF_OPEN_PORT))
+        s.setblocking(False)
+        s.connect_ex((LWIP_IP, PORT))
+        time.sleep(0.3)
+        s.close()
+
+
 def start(harness):
     env = dict(os.environ, PRECONFIGURED_TAPIF=TAP, PRE_KB=str(PRE_KB))
     p = subprocess.Popen([harness], env=env, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
@@ -61,7 +87,7 @@ def connect(timeout=3):
     return serial.serial_for_url(URL, timeout=0.2, do_not_open=False) if timeout else None
 
 
-def pitfall(harness, limit):
+def pitfall(harness, limit, with_half_open=False):
     p, events = start(harness)
     try:
         a = connect()
@@ -74,6 +100,8 @@ def pitfall(harness, limit):
         iptables('-I', a_port)
         t0 = time.monotonic()
         try:
+            if with_half_open:
+                half_open('-I')
             while time.monotonic() - t0 < limit:
                 try:
                     b = serial.serial_for_url(URL, timeout=0.2)
@@ -86,6 +114,8 @@ def pitfall(harness, limit):
                 dt = None
         finally:
             iptables('-D', a_port)
+            if with_half_open:
+                half_open('-D')
         for t, e in events:
             if t >= t0 - 0.1:
                 print(f'  +{t - t0:5.1f} s  {e.split(" ", 1)[1]}')
@@ -113,12 +143,21 @@ def quiet_reader(harness, seconds):
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('harness')
-    ap.add_argument('--max', type=float, default=17, help='longest acceptable time to the next client (s)')
+    ap.add_argument('--max', type=float, default=None,
+                    help='longest acceptable time to the next client (s); default 17, with --half-open 18.5')
     ap.add_argument('--limit', type=float, default=60)
     ap.add_argument('--quiet', type=float, default=35, help='how long the read-only client stays (s)')
+    ap.add_argument('--half-open', action='store_true',
+                    help='add a given-up connection attempt (half-open in lwIP) right after the cut')
     o = ap.parse_args()
+    if o.max is None:
+        # With the half-open connection, client B's stale attempts from the dead
+        # period fill the rest of the queue, so B gets in with its next SYN
+        # retransmission (~17 s on the host); with a backlog of 1 it waits for
+        # the half-open connection to expire (~20 s).
+        o.max = 18.5 if o.half_open else 17
     make_tap()
-    dt = pitfall(o.harness, o.limit)
+    dt = pitfall(o.harness, o.limit, o.half_open)
     print(f'next client after: {dt:.1f} s' if dt is not None else f'next client: none within {o.limit} s')
     dropped, probes = quiet_reader(o.harness, o.quiet)
     print(f'read-only client: {probes} probes answered, {"DROPPED" if dropped else "kept"} for {o.quiet:.0f} s')
