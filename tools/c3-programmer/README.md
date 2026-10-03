@@ -65,7 +65,7 @@ Diagram and first-flash steps: [`docs/WIRING.md`](../../docs/WIRING.md).
 | 5–10 s | restart the C3 itself |
 | ≥ 10 s | forget Wi-Fi and reset the page password to `12345678` (the C3 returns to setup mode) |
 
-A button already down when the C3 starts counts only from its release (0.4.6). Up to 0.4.5 a hold past 10 s restarted the C3 with the button still down, and the new boot took the rest of the hold as a new press: on release it restarted the WT32 (1–5 s) or put it into flash mode (< 1 s); seen on hardware, the WT32 restarted 2 s after the C3.
+A button already down when the C3 starts counts only from its release (0.4.6; on hardware the WT32 kept running through a hold past 10 s). Up to 0.4.5 a hold past 10 s restarted the C3 with the button still down, and the new boot took the rest of the hold as a new press: on release it restarted the WT32 (1–5 s) or put it into flash mode (< 1 s); seen on hardware, the WT32 restarted 2 s after the C3.
 
 LED: double blink — setup access point; 1 Hz — connecting to Wi-Fi; steady on — ready; flickering — data exchange with the WT32.
 
