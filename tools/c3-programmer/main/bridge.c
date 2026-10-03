@@ -19,6 +19,7 @@
 #include "esp_log.h"
 #include "esp_pthread.h"
 #include "esp_timer.h"
+#include "client_watch.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
@@ -57,20 +58,36 @@ static SemaphoreHandle_t s_purge_done;     /* uart_rx_task -> on_purge() */
 static volatile bool s_client;
 static volatile uint32_t s_activity;
 
-/* Client liveness (client_check_cb). TCP keepalive only acts on an idle
- * connection: once the C3 has unacknowledged data for a client that is gone
- * (the target's log after a reset), lwIP retransmits with growing pauses and
- * the connection lingers for 30 s or more, blocking the next client. */
-#define CHECK_PERIOD_US  1000000
+/* Client liveness (client_watch.c, run by client_watch_task): a client that
+ * stopped answering is dropped, so the next one can connect (one at a time).
+ * The probe also covers a client whose TCP is alive but whose program is
+ * stuck. The drop is a hard close (SO_LINGER 0: RST, nothing queued behind
+ * the unacknowledged data), done by its own task, never by an esp_timer
+ * callback: a socket call there could hold up every timer, IO0 release
+ * included. */
+#if !CONFIG_LWIP_SO_LINGER
+#error "rfc2217_server_disconnect() needs CONFIG_LWIP_SO_LINGER (sdkconfig.defaults)"
+#endif
 #define PROBE_AFTER_US   ((int64_t)CONFIG_C3PROG_CLIENT_KEEPALIVE_S * 2 / 3 * 1000000)
 #define ANSWER_WITHIN_US ((int64_t)CONFIG_C3PROG_CLIENT_KEEPALIVE_S * 1000000 - PROBE_AFTER_US)
-static uint32_t s_rx_seen;      /* rfc2217_server_rx_count() at s_rx_at */
-static int64_t s_rx_at;         /* last time the client sent anything */
-static int64_t s_probe_at;      /* probe queued, waiting for an answer; else 0 */
+static portMUX_TYPE s_watch_lock = portMUX_INITIALIZER_UNLOCKED;
+static client_watch_t s_watch;           /* under s_watch_lock */
+static int64_t s_connected_us;           /* current client negotiated; 0 = none */
+static int64_t s_dropped_us;             /* last drop by the watch; 0 = never */
+static uint32_t s_drops;
 
 bool bridge_client_connected(void)
 {
     return s_client;
+}
+
+void bridge_client_info(bridge_client_info_t *info)
+{
+    int64_t now = esp_timer_get_time();
+    int64_t conn = s_connected_us, drop = s_dropped_us;
+    info->connected_s = s_client && conn ? (int32_t)((now - conn) / 1000000) : -1;
+    info->dropped_s = drop ? (int32_t)((now - drop) / 1000000) : -1;
+    info->drops = s_drops;
 }
 
 uint32_t bridge_activity(void)
@@ -80,10 +97,12 @@ uint32_t bridge_activity(void)
 
 static void on_connected(void *ctx)
 {
+    int64_t now = esp_timer_get_time();
     ESP_LOGI(TAG, "RFC2217 client connected");
-    s_rx_seen = rfc2217_server_rx_count(s_server);
-    s_rx_at = esp_timer_get_time();
-    s_probe_at = 0;
+    taskENTER_CRITICAL(&s_watch_lock);
+    client_watch_start(&s_watch, PROBE_AFTER_US, ANSWER_WITHIN_US, rfc2217_server_rx_count(s_server), now);
+    s_connected_us = now;
+    taskEXIT_CRITICAL(&s_watch_lock);
     s_client = true;
 }
 
@@ -91,6 +110,7 @@ static void on_disconnected(void *ctx)
 {
     ESP_LOGI(TAG, "RFC2217 client disconnected");
     s_client = false;
+    s_connected_us = 0;
     /* Never leave the target held in reset or with IO0 low. */
     target_release();
     uart_set_baudrate(UART_NUM, CONFIG_C3PROG_UART_BAUD);
@@ -156,37 +176,34 @@ static void on_data_received(void *ctx, const uint8_t *data, size_t len)
     s_activity += len;
 }
 
-/* Every second while a client is connected: after PROBE_AFTER_US of silence
- * ask it for an answer; none within ANSWER_WITHIN_US of the probe (or no probe
- * could be queued in that time, because a send is stuck on the connection) ->
- * drop it, so on_disconnected() runs and the next client can connect. */
 #if CONFIG_C3PROG_CLIENT_KEEPALIVE_S > 0
-static void client_check_cb(void *arg)
+/* Once a second while a client is connected: probe it after PROBE_AFTER_US of
+ * silence, drop it when no answer comes (client_watch.h). */
+static void client_watch_task(void *arg)
 {
-    if (!s_client) {
-        return;
-    }
-    int64_t now = esp_timer_get_time();
-    uint32_t rx = rfc2217_server_rx_count(s_server);
-    if (rx != s_rx_seen) {
-        s_rx_seen = rx;
-        s_rx_at = now;
-        s_probe_at = 0;
-        return;
-    }
-    if (now - s_rx_at < PROBE_AFTER_US) {
-        return;
-    }
-    if (s_probe_at == 0 && rfc2217_server_probe(s_server) == 0) {
-        s_probe_at = now;
-    }
-    int64_t since = s_probe_at ? s_probe_at : s_rx_at + PROBE_AFTER_US;
-    if (now - since >= ANSWER_WITHIN_US) {
-        ESP_LOGW(TAG, "RFC2217 client silent for %lld s and not answering: dropping it",
-                 (long long)((now - s_rx_at) / 1000000));
-        s_rx_at = now;                  /* once: on_disconnected() follows */
-        s_probe_at = 0;
-        rfc2217_server_disconnect(s_server);
+    while (true) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        if (!s_client) {
+            continue;
+        }
+        int64_t now = esp_timer_get_time();
+        taskENTER_CRITICAL(&s_watch_lock);
+        int act = client_watch_step(&s_watch, rfc2217_server_rx_count(s_server), now);
+        taskEXIT_CRITICAL(&s_watch_lock);
+        if ((act & CLIENT_WATCH_PROBE) && rfc2217_server_probe(s_server) == 0) {
+            taskENTER_CRITICAL(&s_watch_lock);
+            client_watch_probed(&s_watch, now);
+            taskEXIT_CRITICAL(&s_watch_lock);
+        }
+        if (act & CLIENT_WATCH_DROP) {
+            ESP_LOGW(TAG, "RFC2217 client not answering for %d s: dropping it",
+                     CONFIG_C3PROG_CLIENT_KEEPALIVE_S);
+            s_drops++;
+            s_dropped_us = now;
+            int err = rfc2217_server_disconnect(s_server);
+            ESP_LOGI(TAG, "drop: %s after %lld ms", err == 0 ? "done" : "failed",
+                     (long long)((esp_timer_get_time() - now) / 1000));
+        }
     }
 }
 #endif
@@ -295,10 +312,8 @@ esp_err_t bridge_start(void)
     esp_pthread_set_cfg(&def);          /* later pthreads of this task: defaults again */
     ESP_RETURN_ON_ERROR(err, TAG, "rfc2217 start");
 #if CONFIG_C3PROG_CLIENT_KEEPALIVE_S > 0
-    const esp_timer_create_args_t targs = { .callback = client_check_cb, .name = "client_check" };
-    esp_timer_handle_t check_timer;
-    ESP_RETURN_ON_ERROR(esp_timer_create(&targs, &check_timer), TAG, "check timer");
-    ESP_RETURN_ON_ERROR(esp_timer_start_periodic(check_timer, CHECK_PERIOD_US), TAG, "check timer");
+    /* Below the server threads, so a probe never waits on them for long. */
+    xTaskCreate(client_watch_task, "client_watch", 3072, NULL, PUMP_PRIORITY, NULL);
 #endif
     ESP_LOGI(TAG, "RFC2217 server on port %d", CONFIG_C3PROG_RFC2217_PORT);
     return ESP_OK;

@@ -541,12 +541,21 @@ int rfc2217_server_probe(rfc2217_server_t server)
 
 int rfc2217_server_disconnect(rfc2217_server_t server)
 {
-    /* Wakes the receive thread (and aborts a send waiting for the connection),
-     * which then runs on_client_disconnected; the server thread closes the
-     * socket and accepts the next client. */
+    /* A hard close: with linger 0, lwIP aborts the connection (RST) when data
+     * is still unsent or unacknowledged, instead of queueing a FIN behind it.
+     * A plain shutdown would block the caller for up to
+     * LWIP_TCP_CLOSE_TIMEOUT_MS_DEFAULT (20 s) when the send queue is full.
+     * Needs CONFIG_LWIP_SO_LINGER. The shutdown also wakes the receive thread
+     * (and aborts a send waiting for the connection), which then runs
+     * on_client_disconnected; the server thread closes the socket and accepts
+     * the next client. */
     int sock = server->client_socket;
     if (sock < 0) {
         return -1;
+    }
+    struct linger lg = { .l_onoff = 1, .l_linger = 0 };
+    if (setsockopt(sock, SOL_SOCKET, SO_LINGER, &lg, sizeof(lg)) != 0) {
+        ESP_LOGW(TAG, "SO_LINGER: errno %d, the close may wait for the peer", errno);
     }
     return shutdown(sock, SHUT_RDWR);
 }

@@ -17,3 +17,7 @@ CONFIG_FREERTOS_HZ=1000
 
 # Phones send long headers in captive-portal checks
 CONFIG_HTTPD_MAX_REQ_HDR_LEN=1024
+
+# rfc2217_server_disconnect(): a hard close (RST) of a client that stopped
+# answering, instead of a FIN queued behind unacknowledged data
+CONFIG_LWIP_SO_LINGER=y

@@ -14,16 +14,19 @@ manager, with these changes:
   `on_client_disconnected` never runs, and since the server takes one client at
   a time nobody else can connect.
 - **Liveness check and disconnect** (`rfc2217_server_rx_count()`,
-  `rfc2217_server_probe()`, `rfc2217_server_disconnect()`). Keepalive does not
-  act while the server has unacknowledged data for the client (the target's log
-  after a reset): lwIP retransmits with growing pauses instead, and the dead
-  connection lingered for 31–34 s. The receive thread counts received chunks;
-  `probe` sends telnet `DO TIMING-MARK` without blocking (trylock on the send
-  mutex, `MSG_DONTWAIT`), which a telnet client answers with `WONT`; and
-  `disconnect` does `shutdown(SHUT_RDWR)` on the client socket, which wakes the
-  receive thread (and aborts a blocked send, `LWIP_NETCONN_FULLDUPLEX`), so
-  `on_client_disconnected` runs and the next client is accepted. The policy
-  (when to probe and drop) lives in the C3's `main/bridge.c`. `client_socket`
+  `rfc2217_server_probe()`, `rfc2217_server_disconnect()`), so the application
+  can drop a client that stopped answering on its own terms. The receive thread
+  counts received chunks; `probe` sends telnet `DO TIMING-MARK` without
+  blocking (trylock on the send mutex, `MSG_DONTWAIT`), which a telnet client
+  answers with `WONT`; `disconnect` sets `SO_LINGER` {1, 0} and does
+  `shutdown(SHUT_RDWR)`: with data still unsent or unacknowledged lwIP aborts
+  the connection (RST) instead of queueing a FIN behind it (a FIN that cannot
+  be queued makes the caller wait up to `LWIP_TCP_CLOSE_TIMEOUT_MS_DEFAULT`,
+  20 s). The shutdown wakes the receive thread (and aborts a blocked send,
+  `LWIP_NETCONN_FULLDUPLEX`), so `on_client_disconnected` runs and the next
+  client is accepted. Needs `CONFIG_LWIP_SO_LINGER`. The policy
+  (when to probe and drop) lives in the C3's `main/client_watch.c`; a host
+  test on lwIP from ESP-IDF is in `test/rfc2217_lwip/`. `client_socket`
   is now -1 when there is no client (set in `create`, and before `close`).
 
 Removed from the copy: examples, CI and tooling files. The rest is unchanged.

@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS "main.c" "target_ctl.c" "bridge.c" "web.c"
+    SRCS "main.c" "target_ctl.c" "bridge.c" "client_watch.c" "web.c"
     INCLUDE_DIRS "."
     EMBED_TXTFILES "portal.html"
     PRIV_REQUIRES wifi_setup rfc2217-server esp_timer esp_http_server nvs_flash esp_netif esp_event

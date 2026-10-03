@@ -142,8 +142,9 @@ uint32_t rfc2217_server_rx_count(rfc2217_server_t server);
  * @return 0 if queued; -1 if no client, a send is in progress or the buffer is full */
 int rfc2217_server_probe(rfc2217_server_t server);
 
-/** @brief Drop the current client (shutdown of its socket); on_client_disconnected
- *         follows from the receive thread
+/** @brief Drop the current client at once (SO_LINGER 0 + shutdown: RST if data is
+ *         still in flight; needs CONFIG_LWIP_SO_LINGER); on_client_disconnected
+ *         follows from the receive thread. Does not block on the peer.
  * @return 0 on success, -1 if no client */
 int rfc2217_server_disconnect(rfc2217_server_t server);
 

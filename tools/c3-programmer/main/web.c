@@ -15,9 +15,13 @@ extern const char page_end[] asm("_binary_portal_html_end");
 
 static size_t status_extra(char *buf, size_t pos, size_t cap)
 {
-    return setup_portal_appendf(buf, pos, cap, ",\"port\":%d,\"client\":%s,\"en\":%s,\"boot\":%s",
+    bridge_client_info_t ci;
+    bridge_client_info(&ci);
+    return setup_portal_appendf(buf, pos, cap, ",\"port\":%d,\"client\":%s,\"clientFor\":%ld,"
+                                "\"clientDrops\":%lu,\"clientDroppedAgo\":%ld,\"en\":%s,\"boot\":%s",
                                 CONFIG_C3PROG_RFC2217_PORT,
                                 bridge_client_connected() ? "true" : "false",
+                                (long)ci.connected_s, (unsigned long)ci.drops, (long)ci.dropped_s,
                                 target_en_asserted() ? "true" : "false",
                                 target_boot_asserted() ? "true" : "false");
 }
