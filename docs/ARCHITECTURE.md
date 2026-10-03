@@ -89,9 +89,9 @@ Through the page: a `…-ota.bin` file, chip/project check before writing, write
 
 ## Stages
 
-The main firmware is `wt32/` (stages 0–2 are built into it; on hardware: the C3 programmer and the Client mode basics, the rest not yet — checklist with results in `wt32/README.md`).
+The main firmware is `wt32/` (stages 0–2 are built into it; on hardware: the C3 programmer, Client mode, the page OTA and scripts; Router/AP modes and the display not yet — checklist with results in `wt32/README.md`).
 
-0. ✅ C3 programmer, verified on hardware; ⏳ hardware check with a real device: Client mode basics done (checklist items 1, 3, 4, 10), the rest pending.
+0. ✅ C3 programmer, verified on hardware; ⏳ hardware check with a real device: Client mode, OTA and scripts done (checklist items 1, 3–5, 8, 10–12, 27–34), Router/AP modes and the display pending.
 1. ✅ Mode switch ("Client" / "Router" / "Access point") and captive portal; page password; own DHCP server with address reservations.
 2. ✅ Shared IP and management port.
 3. ✅ Old code removed; OTA through the page with rollback.

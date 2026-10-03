@@ -110,13 +110,13 @@
 <path d="M60.0 694.0 L90.0 694.0" fill="none" stroke="#9467bd" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
 <text x="100.0" y="698.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">C3 GPIO7  →  WT32 IO0     (open-drain: boot mode)</text>
 <path d="M60.0 716.0 L90.0 716.0" fill="none" stroke="#d62728" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
-<text x="100.0" y="720.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">C3 5V  →  WT32 5V   (the WT32 is powered from the C3's USB)</text>
+<text x="100.0" y="720.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">C3 5V  →  WT32 5V   (flashing and the log only, see below)</text>
 <path d="M60.0 738.0 L90.0 738.0" fill="none" stroke="#222222" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
 <text x="100.0" y="742.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">GND  —  GND   (required)</text>
 <text x="600.0" y="632.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">Either EN pin of the WT32 works; any GND works.</text>
 <text x="600.0" y="654.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">Pin names are printed on the bottom side of both boards:</text>
 <text x="600.0" y="676.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">if they differ from the drawing, go by the printed names.</text>
 <text x="600.0" y="698.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="normal" fill="#222222">Never connect 3V3 to 3V3.</text>
-<text x="600.0" y="720.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="bold" fill="#222222">No second supply on the WT32 while the</text>
-<text x="600.0" y="742.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="bold" fill="#222222">red 5V wire is connected (e.g. its USB-C in the case).</text>
+<text x="600.0" y="720.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="bold" fill="#222222">The C3's 5V cannot run Wi-Fi + Ethernet (brownout resets):</text>
+<text x="600.0" y="742.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" text-anchor="start" font-weight="bold" fill="#222222">give the WT32 its own 5 V supply and remove the red wire.</text>
 </svg>

@@ -4,7 +4,7 @@
 
 Main firmware. The WT32 is connected by cable to **one** device (any device) and gives it Wi-Fi (or, in Access point mode, shares the router's network from the cable over Wi-Fi). The firmware knows nothing about the device and does not change its data — it only forwards frames.
 
-> Status: built (ESP-IDF 6.1); the forwarding, management port and script logic is tested on a PC, the page in a browser against a mock API. **On hardware**: Client mode with a device — link, device MAC/IP, ping, normal use, the page on the management port (checklist items 1, 3, 4, 10); everything else is not verified yet.
+> Status: built (ESP-IDF 6.1); the forwarding, management port and script logic is tested on a PC, the page in a browser against a mock API. **On hardware** (0.8.0 and earlier): Client mode with a device (link, device MAC/IP, ping, normal use, longer transfers, a WT32 restart, the page on the management port), the firmware update through the page with rollback confirmation, and Berry scripts (checklist items 1, 3–5, 8, 10–12, 27–34); see [Bench results](#bench-results-2026-09-30--2026-10-03). Router and Access point modes, the display and the button are not verified yet.
 
 ## Three modes (chosen on the page, applied after a restart)
 
@@ -16,6 +16,9 @@ The WT32 connects to an existing Wi-Fi network. The device gets an IP from that 
 - Which address is the device's: the one from its DHCP lease, as soon as the router's reply passes by. A device with a static address: the address it sends from; if it uses several, the WT32 stays on the first one and moves only after it has been silent for 30 s while the device uses another. The page shows "(DHCP)" or "(static)" next to it.
 - Page: **`http://<device IP>:28480`**. While the network is not configured or has been unreachable for 60 s, or the device's IP is not known yet, the page is also available through the **`WT32-Setup-XXXX`** access point → http://192.168.4.1 (open, no Wi-Fi password).
 - A **static address from another network** (e.g. a printer set to `192.168.1.77` in a `192.168.50.x` network): nobody on the Wi-Fi network can reach it, the page included. The WT32 notices it — no DHCP, and no other host of that subnet is heard on Wi-Fi — keeps the `WT32-Setup-XXXX` access point on, and the page and the display point there. The access point goes off once a host of the device's subnet is heard (or the device takes a DHCP address).
+- A device that keeps its lease across a WT32 restart (it does not redo DHCP on link-up, like the test printer) shows "(static)" until its next DHCP renewal. That is expected: the WT32 only learns a lease from the router's reply.
+- Lease-first addressing (0.7.2) is verified on hardware: the page shows "(DHCP)" once the device takes a lease, and the address no longer flaps. On 0.7.1 a dock that briefly sent from two IPv4 addresses after a re-lease made the management address flip every 1–3 s.
+- The test printer came with a static address from another network; before 0.7.2 that left the WT32 unreachable. The 0.7.2 behaviour for this case (the setup access point stays on) has not been re-tested on hardware.
 - IPv6 is not forwarded (MACs in neighbor discovery packets are not rewritten).
 
 ### Router
@@ -123,16 +126,16 @@ Result: ✅ verified on hardware, with the WT32 firmware version it was verified
 |---|---|---|---|
 | 1 | Turn the device on | Ethernet — link up, the device MAC appears, then its IP | ✅ 0.7.0 |
 | 2 | Router's client list | a new client with the **WT32 station MAC** and the IP shown on the page | |
-| 3 | From a PC: `ping <IP>` | replies | ✅ 0.7.0 |
+| 3 | From a PC: `ping <IP>` | replies | ✅ 0.7.0; 0.8.0: 4–9 ms |
 | 4 | Normal use of the device at `<IP>` | works | ✅ 0.7.0 |
-| 5 | Longer transfer (large file, several jobs in a row) | works without interruptions | |
+| 5 | Longer transfer (large file, several jobs in a row) | works without interruptions | ✅ 0.8.0 (a PC as the device): 20 s each way, 6.8 / 7.8 Mbit/s, 0 % ping loss (see Bench results) |
 | 6 | Vendor utility → search for the device on the network | finds it / doesn't (write down) | |
-| 7 | Turn the device off and on | same IP, normal use works | |
-| 8 | Restart the WT32 (device stays on) | connection comes back without restarting the device | |
+| 7 | Turn the device off and on | same IP (only with a DHCP reservation for the WT32 station MAC on the router), normal use works | not met on 0.8.0: the router gave the printer a different address after a power cycle (no reservation) |
+| 8 | Restart the WT32 (device stays on) | connection comes back without restarting the device | ✅ 0.7.2, 0.8.0: link back in 3.3 s, the device redoes DHCP, router reachable at 5.1 s |
 | 9 | Restart the router | connection comes back by itself | |
 | 10 | From a PC open `http://<IP>:28480`, log in | WT32 page; the **WT32 management traffic** counter grows; the `WT32-Setup` access point is gone | ✅ 0.7.1 |
-| 11 | Use the device (item 4) with the page from item 10 open | works, the page keeps updating | |
-| 12 | If the device has a web page: `http://<IP>` | the **device's** page opens, not the WT32's | |
+| 11 | Use the device (item 4) with the page from item 10 open | works, the page keeps updating | ✅ 0.8.0: the page kept updating through a 30 s 7.5 Mbit/s transfer |
+| 12 | If the device has a web page: `http://<IP>` | the **device's** page opens, not the WT32's | ✅ 0.8.0: the printer's own page on :80; the WT32 page only on :28480 |
 | 13 | Change the page password, log out, log in with the new one | works; the old password is rejected | |
 
 **Router mode**
@@ -162,19 +165,19 @@ Result: ✅ verified on hardware, with the WT32 firmware version it was verified
 
 | # | Action | Expected | Result |
 |---|---|---|---|
-| 27 | Page → Firmware → `wt32-bridge.bin` | rejected: "This is not an update file. Use the "…-ota.bin" image…" | |
-| 28 | Same with `wt32-bridge-ota.bin` | progress, restart, login, "Updated to version…", the partition has changed (`ota_0` ↔ `ota_1`); the Firmware table shows the new version, build time and commit | |
-| 29 | 1–2 min after item 28, restart the WT32 (power off) | starts from the new firmware (it has been confirmed) | |
+| 27 | Page → Firmware → `wt32-bridge.bin` | rejected: "This is not an update file. Use the "…-ota.bin" image…" | ✅ 0.8.0 |
+| 28 | Same with `wt32-bridge-ota.bin` | progress, restart, login, "Updated to version…", the partition has changed (`ota_0` ↔ `ota_1`); the Firmware table shows the new version, build time and commit | ✅ 0.8.0: ota_0 → ota_1, 1.2 MB in ~20 s; the Firmware table shows version, build time, commit, partition and the 60 s note |
+| 29 | 1–2 min after item 28, restart the WT32 (power off) | starts from the new firmware (it has been confirmed) | ✅ 0.8.0: "ota: new firmware confirmed after 60 s"; a reset (EN through the programmer, not a power cut) boots ota_1 again |
 
 **Scripts**
 
 | # | Action | Expected | Result |
 |---|---|---|---|
-| 30 | Script (Berry) → example → Save and run | state "running"; Results shows mode, Ethernet, device IP, memory; updates every 5 s | |
-| 31 | Use the device while the script runs | works as usual | |
-| 32 | Script `while true end` | "error — timeout_error…"; the page and the device keep working | |
-| 33 | Turn on Run at startup, restart the WT32 | the script starts by itself | |
-| 34 | UART log, `script` line / **Script memory** on the page | write down the device's free memory with the example running | |
+| 30 | Script (Berry) → example → Save and run | state "running"; Results shows mode, Ethernet, device IP, memory; updates every 5 s | ✅ 0.8.0 |
+| 31 | Use the device while the script runs | works as usual | ✅ 0.8.0: 5.9 Mbit/s while the example ran |
+| 32 | Script `while true end` | "error — timeout_error…"; the page and the device keep working | ✅ 0.8.0: "timeout_error: script code ran too long"; page and bridge kept working |
+| 33 | Turn on Run at startup, restart the WT32 | the script starts by itself | ✅ 0.8.0: also after the OTA restart |
+| 34 | UART log, `script` line / **Script memory** on the page | write down the device's free memory with the example running | ✅ 0.8.0: script memory 7.8–8.3 KB (peak 12.8 KB) of 40 KB; free on the device 108–116 KB on the page, 123–124 KB from `heap()`; `script:` lines on UART |
 
 **Display and button** (wiring — above)
 
@@ -186,7 +189,19 @@ Result: ✅ verified on hardware, with the WT32 firmware version it was verified
 | 38 | Hold for 3 s and release | the display shows "Hold until 5 s:" and a bar; nothing happens after release | |
 | 39 | Hold for 6 s and release | restart; `WT32-Setup-XXXX` access point, the page shows "One-time setup start"; another restart — the saved mode | |
 | 40 | Hold for 11 s and release | "RESET the settings", restart; Client mode with no network, page password `12345678` | |
-| 41 | On the page switch EN ↔ УКР; then restart the WT32 | the display changes language within a second; after the restart it keeps the last choice | |
+| 41 | On the page switch EN ↔ УКР; then restart the WT32 | the display changes language within a second; after the restart it keeps the last choice | page part only, 0.8.0: the language survives a restart; the display part is not verified |
+
+### Bench results (2026-09-30 … 2026-10-03)
+
+WT32-ETH01 (ESP32-D0WD rev 1.0, 4 MB) wired to the C3 SuperMini programmer as in [`docs/WIRING.md`](../docs/WIRING.md); flashed and logged over RFC2217 with stock esptool 4.8.1 / pyserial 3.5 on Windows 11. Final state: WT32 0.8.0 running from `ota_1` after a page OTA, C3 0.4.1. Devices on the cable at different times: a receipt-style network printer (web page on :80, 100 Mbit/s full duplex, no PAUSE, does not redo DHCP on a link bounce), a USB-C dock with a Linux laptop, and the PC's own Ethernet (negotiates PAUSE).
+
+- **Throughput (item 5, the PC as the device):** traffic pushed through the bridge by binding source addresses (client on the PC's Ethernet address, server on its Wi-Fi address), 2.4 GHz, RSSI −67…−74 dBm. 20 s each way without interruptions: 6.8 Mbit/s device → Wi-Fi, 7.8 Mbit/s Wi-Fi → device, 0 % ping loss. Ping under the Wi-Fi → device load ~120 ms on average (max 182 ms). Counters after all runs: "Waited for Wi-Fi" 194, Wi-Fi transmit errors 40 (last `ESP_ERR_NO_MEM`) of ~80 k device → Wi-Fi frames. For comparison, on 0.6.0 about 14 % of the frames failed under a ~15 Mbit/s download, with ping at 200–330 ms.
+- **Ping** to the device: 4–9 ms (0.8.0).
+- **WT32 restart with the device on (item 8):** link back at 3.3 s, the device repeats DHCP, the router is reachable through the bridge at 5.1 s.
+- **Device power cycle (item 7):** the router handed the printer a different address; a DHCP renewal from the PC kept the same one. Keeping the address needs a reservation for the WT32 station MAC.
+- **Memory (item 34):** with the example script running, script memory 7.8–8.3 KB (peak 12.8 KB) of 40 KB; free on the device 108–116 KB as shown in the Script section, 123–124 KB from the script's `heap()` (the two figures differ; see 0.8.1).
+- **Power:** see the power note in [`docs/WIRING.md`](../docs/WIRING.md): powered from the programmer's 5 V, the WT32 brownout-reset in a loop as soon as Wi-Fi started with the Ethernet link up.
+- **Not tested on hardware yet:** items 2, 6, 9, 13; Router and Access point modes (14–26); the display and button (35–40; 41 only on the page).
 
 If something does not work, attach the filled-in tables, screenshots of the page and a few lines of the log to an issue.
 

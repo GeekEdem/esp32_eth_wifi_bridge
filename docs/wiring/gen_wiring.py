@@ -122,7 +122,7 @@ def programmer():
                          ('orange', 'C3 GPIO5 (UART1 RX)  ←  WT32 IO1 / TXD0'),
                          ('blue', 'C3 GPIO6  →  WT32 EN      (open-drain: reset)'),
                          ('purple', 'C3 GPIO7  →  WT32 IO0     (open-drain: boot mode)'),
-                         ('red', 'C3 5V  →  WT32 5V   (the WT32 is powered from the C3\'s USB)'),
+                         ('red', 'C3 5V  →  WT32 5V   (flashing and the log only, see below)'),
                          ('black', 'GND  —  GND   (required)')])
     notes = ['Either EN pin of the WT32 works; any GND works.',
              'Pin names are printed on the bottom side of both boards:',
@@ -130,8 +130,8 @@ def programmer():
              'Never connect 3V3 to 3V3.']
     for i, n in enumerate(notes):
         svg.text(600, ly + 4 + i * 22, n, 12)
-    svg.text(600, ly + 4 + 4 * 22, 'No second supply on the WT32 while the', 12, weight='bold')
-    svg.text(600, ly + 4 + 5 * 22, 'red 5V wire is connected (e.g. its USB-C in the case).', 12, weight='bold')
+    svg.text(600, ly + 4 + 4 * 22, 'The C3\'s 5V cannot run Wi-Fi + Ethernet (brownout resets):', 12, weight='bold')
+    svg.text(600, ly + 4 + 5 * 22, 'give the WT32 its own 5 V supply and remove the red wire.', 12, weight='bold')
     svg.save('programmer.svg')
 
 

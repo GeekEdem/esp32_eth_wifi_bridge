@@ -8,7 +8,7 @@ Firmware for the **ESP32-C3 SuperMini** that turns it into a programmer and seri
 - **Over USB (fallback):** C3 USB ↔ WT32 UART at a fixed 115200. The bootloader is entered with the button or from the web page.
 - **Web page** `http://c3prog.local` (English / Ukrainian): Wi-Fi selection, status, **Restart** and **Download mode** buttons for the WT32, the C3's own firmware (version, build time, commit, SHA-256) and its update.
 
-> Status: built (ESP-IDF 6.1). **Verified on hardware** (C3 firmware 0.3.1 and later): flashing the WT32 over Wi-Fi (`rfc2217://c3prog.local:4000`), its log over `miniterm`, `c3prog.local` over mDNS. The USB path, the BOOT button actions and the page's OTA are not verified yet.
+> Status: built (ESP-IDF 6.1). **Verified on hardware** (C3 0.3.1–0.4.1, stock esptool 4.8.1 / pyserial 3.5 on Windows 11): `flash_id`, `read_flash` and `write_flash` over RFC2217 (at 460800 about 300 kbit/s effective: 1.2 MB in ~31 s), the log over `miniterm`, RTS → EN resets, repeated reconnects with buffer purges, `c3prog.local` over mDNS, the C3's page. Not verified yet: the USB fallback path, the BOOT button actions and the C3's own OTA through its page.
 
 ## 1. Flash the C3 with the prebuilt binary
 
@@ -117,7 +117,8 @@ Page texts: [`main/i18n/<code>.json`](main/i18n/) plus the shared ones in [`shar
 
 - One RFC2217 network client at a time.
 - Before 0.3.1 the first buffer purge from esptool/pyserial (`timeout while waiting for option 'purge'`) hung the connection thread, and the server then refused every new client until the C3 was restarted. Fixed in 0.3.1: flash the new `c3-programmer.bin` over USB (or `-ota.bin` through the page).
-- If the laptop disappears mid-session (sleep, Wi-Fi drop), the connection may stay open until TCP gives up, and until then new connections are not accepted. Restart the C3 (BOOT 5–10 s) if that happens.
+- If the laptop disappears mid-session (sleep, Wi-Fi drop), the connection may stay open until TCP gives up, and until then new connections are not accepted. If EN (RTS) was asserted at that moment, the WT32 also stays in reset. Restart the C3 (BOOT 5–10 s) if that happens.
+- **Routing pitfall:** if the PC that runs esptool/miniterm also has a wired interface behind the WT32 (e.g. testing with the PC as the device), the OS may route the RFC2217 connection through the WT32 (on Windows, Ethernet metric 5 is below Wi-Fi's 35). An RTS reset then cuts the connection that carries it, the WT32 stays in reset and the C3 accepts no new client until it is restarted (BOOT 5–10 s, or a USB reset). Reproduced on 0.4.0 and 0.4.1. Bind the client to the other interface or add a host route to the C3.
 - The page is password-protected (default `12345678`), but the RFC2217 port itself (4000) has no password: anyone on the same network can flash or reset the WT32. Acceptable for a home bench.
 - The setup access point is open (no Wi-Fi password); the page behind it is password-protected.
 - Wi-Fi TX power is lowered to 8.5 dBm by default — the usual fix for SuperMini antenna problems. If the link is weak, change it in `menuconfig`.

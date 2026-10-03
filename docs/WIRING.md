@@ -16,12 +16,12 @@ How to wire the ESP32-C3 SuperMini programmer to the WT32-ETH01, flash it the fi
 | GPIO5 (UART1 RX) | IO1 / TXD0 | data and log from the WT32 |
 | GPIO6 | EN (either of the two) | reset; open-drain: the C3 only pulls it low or lets go |
 | GPIO7 | IO0 | boot mode; open-drain, released after start (IO0 is the Ethernet clock input) |
-| 5V | 5V | the WT32 is powered from the C3's USB |
+| 5V | 5V | for flashing and the log only (see the power note below) |
 | GND | GND (any) | required |
 
 - **Never connect 3V3 to 3V3.** The C3 must never drive IO0 high; the firmware only pulls it low.
 - **Only one 5V source.** While the red 5V wire is connected, do not power the WT32 from anything else (e.g. its USB-C in the case). To keep the programmer attached to a WT32 that has its own power, disconnect only the 5V wire; GND stays.
-- A USB charger or a laptop port is enough: the WT32 with Wi-Fi and Ethernet draws up to about 300 mA at its peaks.
+- **Power: the programmer's 5V is enough for flashing and the log, not for running.** Powered from the C3's 5V pin with the C3 on a PC USB port, the WT32 (any firmware version) brownout-resets in a loop about 2.4 s after boot, right when the Wi-Fi station starts with the Ethernet link up: the log shows `E BOD: Brownout detector was triggered`, then a reset. To run the firmware with Wi-Fi and Ethernet, give the WT32 its own 5 V supply (1 A or more suggested), remove the red 5V wire, and keep only GND and the four signal wires to the C3.
 
 ## 2. First flash
 
@@ -45,6 +45,11 @@ How to wire the ESP32-C3 SuperMini programmer to the WT32-ETH01, flash it the fi
 6. Connect a phone to the **`WT32-Setup-XXXX`** access point → http://192.168.4.1 (page password `12345678`) and choose the mode. Then go through the checklist in [`wt32/README.md`](../wt32/README.md).
 
 If `.local` names do not resolve (common on Windows without Bonjour), use the C3's IP from its status page or your router.
+
+### Troubleshooting
+
+- **The WT32 restarts every few seconds, `Brownout detector was triggered` in the log:** it is powered from the programmer's 5V. Give it its own 5 V supply (see the power note in section 1).
+- **esptool or miniterm loses the connection on a reset, and afterwards the WT32 stays in reset and the C3 accepts no new connection:** the PC that runs esptool/miniterm also has a wired interface behind the WT32 (for example when testing with the PC as the device), and the OS routes the RFC2217 connection through the WT32 (on Windows, Ethernet often has metric 5 against Wi-Fi's 35). The RTS reset then cuts the connection that carries it. The C3 then keeps EN low, so the WT32 stays in reset, and it accepts no new client until it is restarted (BOOT 5–10 s, or a USB reset). To avoid it, make the PC reach the C3 through the other interface: bind the client to it or add a host route to the C3's address.
 
 ## 3. After flashing: with or without the programmer
 
