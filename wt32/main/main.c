@@ -149,7 +149,6 @@ static void fill_info(ui_info_t *in)
         in->to_eth_bytes = s.to_eth_bytes;
         in->dropped = s.drop_wifi_down + s.drop_eth_down;
         in->tx_errors = s.tx_err_wifi + s.tx_err_eth;
-        in->foreign = s.foreign_frames;
         in->eth_up = s.eth_up;
         in->dev_known = s.dev_known;
         memcpy(in->dev_mac, s.dev_mac, 6);

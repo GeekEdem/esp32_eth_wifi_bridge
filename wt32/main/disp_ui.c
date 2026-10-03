@@ -8,9 +8,14 @@
 #include "button.h"
 #include "font6x10.h"
 
-#define LINE_H      10
-#define TITLE_H     10
-#define LINES       5
+/* The title bar ends 2 rows above the colour boundary (UI_TOP_H): those stay
+ * dark, as the gap between the strips. The body's four 10-row lines fill
+ * the 48 rows below it. */
+#define TITLE_H     (UI_TOP_H - 2)
+#define TITLE_Y     2                   /* text in the bar */
+#define BODY_Y      (UI_TOP_H + 1)
+#define LINE_H      12
+#define LINES       4
 #define LINE_LEN    96                  /* >= 21 characters of UTF-8, and key + value of an output */
 
 /* ---------- primitives ---------- */
@@ -409,42 +414,41 @@ int ui_page_count(const ui_info_t *in)
 
 typedef char lines_t[LINES][LINE_LEN];
 
+/* The first page: its title is the mode (see page_title()). */
 static void network_lines(const ui_info_t *in, lines_t l)
 {
     char ip[16], n[12];
     if (in->mode == UI_CLIENT) {
-        snprintf(l[0], LINE_LEN, "%s", ui_tr(in->setup_boot ? "disp.modeSetup" : "disp.modeClient"));
         if (in->wifi_state == 2) {
-            snprintf(l[1], LINE_LEN, "Wi-Fi: %s", in->wifi_ssid);
-            ui_trf(l[2], LINE_LEN, "disp.signal", "n", num(n, in->rssi), NULL);
+            snprintf(l[0], LINE_LEN, "Wi-Fi: %s", in->wifi_ssid);
+            ui_trf(l[1], LINE_LEN, "disp.signal", "n", num(n, in->rssi), NULL);
         } else if (in->wifi_state == 1) {
-            snprintf(l[1], LINE_LEN, "%s", ui_tr("disp.wifiConnecting"));
-            snprintf(l[2], LINE_LEN, "%s", in->wifi_ssid);
+            snprintf(l[0], LINE_LEN, "%s", ui_tr("disp.wifiConnecting"));
+            snprintf(l[1], LINE_LEN, "%s", in->wifi_ssid);
         } else {
-            snprintf(l[1], LINE_LEN, "%s", ui_tr("disp.wifiNone"));
+            snprintf(l[0], LINE_LEN, "%s", ui_tr("disp.wifiNone"));
         }
         if (in->mgmt_ip && !in->setup_boot) {
             fmt_ip(ip, sizeof(ip), in->mgmt_ip);
-            snprintf(l[3], LINE_LEN, "%s", ui_tr("disp.page"));
-            snprintf(l[4], LINE_LEN, "%s:%u", ip, in->mgmt_port);
+            snprintf(l[2], LINE_LEN, "%s", ui_tr("disp.page"));
+            snprintf(l[3], LINE_LEN, "%s:%u", ip, in->mgmt_port);
         } else if (in->setup_ap) {
-            snprintf(l[3], LINE_LEN, "%s", in->setup_ssid);
-            snprintf(l[4], LINE_LEN, "http://192.168.4.1");
+            snprintf(l[2], LINE_LEN, "%s", in->setup_ssid);
+            snprintf(l[3], LINE_LEN, "http://192.168.4.1");
         } else {
-            snprintf(l[3], LINE_LEN, "%s", ui_tr("disp.pageWhen1"));
-            snprintf(l[4], LINE_LEN, "%s", ui_tr("disp.pageWhen2"));
+            snprintf(l[2], LINE_LEN, "%s", ui_tr("disp.pageWhen1"));
+            snprintf(l[3], LINE_LEN, "%s", ui_tr("disp.pageWhen2"));
         }
         return;
     }
-    snprintf(l[0], LINE_LEN, "%s", ui_tr(in->mode == UI_ROUTER ? "disp.modeRouter" : "disp.modeAp"));
-    snprintf(l[1], LINE_LEN, "Wi-Fi: %s", in->ap_ssid);
-    ui_trf(l[2], LINE_LEN, "disp.apClients", "n", num(n, in->ap_clients), NULL);
-    snprintf(l[3], LINE_LEN, "%s", ui_tr(in->uplink == UI_UPLINK_FALLBACK ? "disp.pageFallback" : "disp.page"));
+    snprintf(l[0], LINE_LEN, "Wi-Fi: %s", in->ap_ssid);
+    ui_trf(l[1], LINE_LEN, "disp.apClients", "n", num(n, in->ap_clients), NULL);
+    snprintf(l[2], LINE_LEN, "%s", ui_tr(in->uplink == UI_UPLINK_FALLBACK ? "disp.pageFallback" : "disp.page"));
     if (in->wt32_ip) {
         fmt_ip(ip, sizeof(ip), in->wt32_ip);
-        snprintf(l[4], LINE_LEN, "http://%s", ip);
+        snprintf(l[3], LINE_LEN, "http://%s", ip);
     } else {
-        snprintf(l[4], LINE_LEN, "%s", ui_tr("disp.waitDhcp"));
+        snprintf(l[3], LINE_LEN, "%s", ui_tr("disp.waitDhcp"));
     }
 }
 
@@ -462,20 +466,21 @@ void ui_eth_line(char *buf, size_t len, const ui_info_t *in)
 
 static void device_lines(const ui_info_t *in, lines_t l)
 {
+    char v[LINE_LEN];
     ui_eth_line(l[0], LINE_LEN, in);
-    snprintf(l[1], LINE_LEN, "%s", ui_tr("disp.devMac"));
     if (in->dev_known) {
         const uint8_t *m = in->dev_mac;
-        snprintf(l[2], LINE_LEN, "%02X:%02X:%02X:%02X:%02X:%02X", m[0], m[1], m[2], m[3], m[4], m[5]);
+        snprintf(v, sizeof(v), "%02X:%02X:%02X:%02X:%02X:%02X", m[0], m[1], m[2], m[3], m[4], m[5]);
     } else {
-        snprintf(l[2], LINE_LEN, "%s", ui_tr("disp.notSeen"));
+        snprintf(v, sizeof(v), "%s", ui_tr("disp.notSeen"));
     }
-    snprintf(l[3], LINE_LEN, "%s", ui_tr("disp.devIp"));
+    ui_trf(l[1], LINE_LEN, "disp.mac", "v", v, NULL);
     if (in->dev_ip) {
-        fmt_ip(l[4], LINE_LEN, in->dev_ip);
+        fmt_ip(v, sizeof(v), in->dev_ip);
     } else {
-        snprintf(l[4], LINE_LEN, "%s", in->dev_known ? ui_tr(in->mode == UI_ROUTER ? "disp.waitDhcp" : "disp.ipUnknown") : "—");
+        snprintf(v, sizeof(v), "%s", in->dev_known ? ui_tr(in->mode == UI_ROUTER ? "disp.waitDhcp" : "disp.ipUnknown") : "—");
     }
+    ui_trf(l[2], LINE_LEN, "disp.ip", "v", v, NULL);
 }
 
 static void cable_lines(const ui_info_t *in, lines_t l)
@@ -483,13 +488,12 @@ static void cable_lines(const ui_info_t *in, lines_t l)
     static const char *const UPLINK[] = { NULL, "disp.uplinkWaiting", "disp.uplinkDhcp", "disp.uplinkFallback" };
     const char *up = UPLINK[in->uplink <= UI_UPLINK_FALLBACK ? in->uplink : 0];
     ui_eth_line(l[0], LINE_LEN, in);
-    snprintf(l[1], LINE_LEN, "%s", ui_tr("disp.routerDhcp"));
-    snprintf(l[2], LINE_LEN, "%s", up ? ui_tr(up) : "—");
-    snprintf(l[3], LINE_LEN, "%s", ui_tr("disp.gateway"));
+    ui_trf(l[1], LINE_LEN, "disp.dhcp", "v", up ? ui_tr(up) : "—", NULL);
+    snprintf(l[2], LINE_LEN, "%s", ui_tr("disp.gateway"));
     if (in->gw) {
-        fmt_ip(l[4], LINE_LEN, in->gw);
+        fmt_ip(l[3], LINE_LEN, in->gw);
     } else {
-        snprintf(l[4], LINE_LEN, "—");
+        snprintf(l[3], LINE_LEN, "—");
     }
 }
 
@@ -504,8 +508,6 @@ static void traffic_lines(const ui_info_t *in, lines_t l)
     ui_trf(l[2], LINE_LEN, "disp.dropped", "n", n, NULL);
     snprintf(n, sizeof(n), "%lu", (unsigned long)in->tx_errors);
     ui_trf(l[3], LINE_LEN, "disp.errors", "n", n, NULL);
-    snprintf(n, sizeof(n), "%lu", (unsigned long)in->foreign);
-    ui_trf(l[4], LINE_LEN, "disp.foreign", "n", n, NULL);
 }
 
 static void script_lines(const ui_info_t *in, lines_t l)
@@ -528,8 +530,8 @@ static void system_lines(const ui_info_t *in, lines_t l)
     snprintf(n, sizeof(n), "%lu", (unsigned long)(in->heap / 1024));
     ui_trf(l[1], LINE_LEN, "disp.memory", "n", n, NULL);
     ui_trf(l[2], LINE_LEN, "disp.uptime", "t", up, NULL);
+    /* the 10 s reset is shown once a hold passes 5 s (ui_render_hold()) */
     snprintf(l[3], LINE_LEN, "%s", ui_tr("disp.btn5"));
-    snprintf(l[4], LINE_LEN, "%s", ui_tr("disp.btn10"));
 }
 
 static void title(uint8_t *fb, const char *text, int index, int count)
@@ -540,21 +542,32 @@ static void title(uint8_t *fb, const char *text, int index, int count)
         snprintf(num, sizeof(num), "%d/%d", index + 1, count);
     }
     int nlen = (int)strlen(num);
-    ui_text(fb, 1, 0, text, UI_COLS - nlen - 1, true);
-    ui_text(fb, UI_W - 1 - nlen * FONT_W, 0, num, nlen, true);
+    ui_text(fb, 1, TITLE_Y, text, UI_COLS - nlen - 1, true);
+    ui_text(fb, UI_W - 1 - nlen * FONT_W, TITLE_Y, num, nlen, true);
 }
 
 static void body(uint8_t *fb, lines_t l)
 {
     for (int i = 0; i < LINES; i++) {
-        ui_text(fb, 1, TITLE_H + 1 + i * LINE_H, l[i], UI_COLS, false);
+        ui_text(fb, 1, BODY_Y + i * LINE_H, l[i], UI_COLS, false);
     }
+}
+
+static const char *page_title(const ui_info_t *in, page_t p)
+{
+    static const char *const TITLES[] = { NULL, "disp.tDevice", "disp.tCable", "disp.tTraffic",
+                                          "disp.tScript", "disp.tSystem" };
+    if (p != P_NETWORK) {
+        return ui_tr(TITLES[p]);
+    }
+    if (in->setup_boot) {
+        return ui_tr("disp.tSetup");
+    }
+    return ui_tr(in->mode == UI_ROUTER ? "disp.tRouter" : in->mode == UI_AP ? "disp.tAp" : "disp.tClient");
 }
 
 void ui_render_page(uint8_t *fb, const ui_info_t *in, int index)
 {
-    static const char *const TITLES[] = { "disp.tNetwork", "disp.tDevice", "disp.tCable", "disp.tTraffic",
-                                          "disp.tScript", "disp.tSystem" };
     page_t p[6];
     int n = pages(in, p);
     index = ((index % n) + n) % n;
@@ -569,7 +582,7 @@ void ui_render_page(uint8_t *fb, const ui_info_t *in, int index)
     case P_SYSTEM:  system_lines(in, l); break;
     }
     memset(fb, 0, UI_FB_SIZE);
-    title(fb, ui_tr(in->setup_boot && p[index] == P_NETWORK ? "disp.tSetup" : TITLES[p[index]]), index, n);
+    title(fb, page_title(in, p[index]), index, n);
     body(fb, l);
 }
 
@@ -579,7 +592,7 @@ void ui_render_notice(uint8_t *fb, const char *t, const char *l1, const char *l2
     memset(l, 0, sizeof(l));
     const char *src[3] = { l1, l2, l3 };
     for (int i = 0; i < 3; i++) {
-        snprintf(l[i + 1], LINE_LEN, "%s", src[i] ? src[i] : "");
+        snprintf(l[i], LINE_LEN, "%s", src[i] ? src[i] : "");
     }
     memset(fb, 0, UI_FB_SIZE);
     title(fb, t, 0, 0);
@@ -609,7 +622,6 @@ void ui_render_hold(uint8_t *fb, uint32_t held_ms)
         bar(fb, held_ms - BTN_SETUP_MS, BTN_RESET_MS - BTN_SETUP_MS);
     } else {
         ui_render_notice(fb, t, ui_tr("disp.releaseNow"), ui_tr("disp.resetAll"), ui_tr("disp.resetWhat"));
-        ui_fill(fb, 0, TITLE_H + 1 + 2 * LINE_H, UI_W, LINE_H, false);
-        ui_text(fb, 1, TITLE_H + 1 + 2 * LINE_H, ui_tr("disp.resetAll"), UI_COLS, true);
+        ui_text(fb, 1, BODY_Y + LINE_H, ui_tr("disp.resetAll"), UI_COLS, true);
     }
 }

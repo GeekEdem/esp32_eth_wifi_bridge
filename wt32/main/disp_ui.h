@@ -2,8 +2,11 @@
  *
  * The framebuffer uses the SSD1306 layout: 8 pages of 8 rows, one byte per
  * column, bit 0 = top row. Text is UTF-8 in the 6x10 font (21 characters per
- * line); anything longer is cut with "…". A page is a title bar plus five
- * lines. Which pages exist depends on the mode (see ui_page_count()).
+ * line); anything longer is cut with "…". A page is a title bar plus four
+ * lines. The bar stays within the top UI_TOP_H rows, the yellow strip of
+ * two-colour (yellow/blue) modules, and no text crosses into the rest, so
+ * the same layout suits those and single-colour ones. Which pages exist
+ * depends on the mode (see ui_page_count()).
  *
  * Texts come from the page language files (keys "disp.*" in main/i18n/<code>.json,
  * with {placeholders}); ui_set_texts() takes one language's JSON object as
@@ -19,8 +22,9 @@
 #define UI_W        128
 #define UI_H        64
 #define UI_FB_SIZE  (UI_W * UI_H / 8)
+#define UI_TOP_H    16                  /* two-colour modules: rows 0-15 yellow, the rest blue */
 #define UI_COLS     21                  /* characters per line */
-#define UI_MAX_OUT  5                   /* script outputs shown */
+#define UI_MAX_OUT  4                   /* script outputs shown */
 
 typedef enum {
     UI_CLIENT,
@@ -47,7 +51,7 @@ typedef struct {
     char setup_ssid[33];
     uint32_t mgmt_ip;
     uint16_t mgmt_port;
-    uint32_t to_wifi_bytes, to_eth_bytes, dropped, tx_errors, foreign;
+    uint32_t to_wifi_bytes, to_eth_bytes, dropped, tx_errors;
     /* router / access point */
     char ap_ssid[33];
     int ap_clients;
@@ -76,7 +80,8 @@ int ui_page_count(const ui_info_t *in);
 void ui_render_page(uint8_t *fb, const ui_info_t *in, int index);
 /* While the button is held: what letting go now would do. */
 void ui_render_hold(uint8_t *fb, uint32_t held_ms);
-/* A full-screen message: title bar and up to three lines (NULL = empty). */
+/* A full-screen message: title bar and up to three lines (NULL = empty);
+ * the bottom rows stay free for the hold screen's progress bar. */
 void ui_render_notice(uint8_t *fb, const char *title, const char *l1, const char *l2, const char *l3);
 
 /* Language: the "disp.*" texts of a flat JSON object {"key":"text",...}.

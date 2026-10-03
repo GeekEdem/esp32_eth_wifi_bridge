@@ -21,7 +21,7 @@ How to wire the ESP32-C3 SuperMini programmer to the WT32-ETH01, flash it the fi
 
 - **Never connect 3V3 to 3V3.** The C3 must never drive IO0 high; the firmware only pulls it low.
 - **Only one 5V source.** While the red 5V wire is connected, do not power the WT32 from anything else (e.g. its USB-C in the case). To keep the programmer attached to a WT32 that has its own power, disconnect only the 5V wire; GND stays.
-- **Power: the programmer's 5V is enough for flashing and the log, not for running.** Powered from the C3's 5V pin with the C3 on a PC USB port, the WT32 (any firmware version) brownout-resets in a loop about 2.4 s after boot, right when the Wi-Fi station starts with the Ethernet link up: the log shows `E BOD: Brownout detector was triggered`, then a reset. To run the firmware with Wi-Fi and Ethernet, give the WT32 its own 5 V supply (1 A or more suggested), remove the red 5V wire, and keep only GND and the four signal wires to the C3.
+- **Power: the programmer's 5V is enough for flashing and the log, not for running.** Powered from the C3's 5V pin with the C3 on a PC USB port, the WT32 (any firmware version) brownout-resets in a loop about 2.4 s after boot, right when the Wi-Fi station starts with the Ethernet link up: the log shows `E BOD: Brownout detector was triggered`, then a reset. Without the Ethernet cable it may run (seen on 0.8.2), and turning the C3's own Wi-Fi off does not help. To run the firmware with Wi-Fi and Ethernet, give the WT32 its own 5 V supply (1 A or more suggested), remove the red 5V wire, and keep only GND and the four signal wires to the C3.
 
 ## 2. First flash
 

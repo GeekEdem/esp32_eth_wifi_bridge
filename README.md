@@ -43,7 +43,7 @@ The pages at phone width (taken against the test mock; [`docs/img/screenshots.js
 
 In Ukrainian: [login](docs/img/login_uk.png), [client](docs/img/client_uk.png), [router](docs/img/router_uk.png), [mode](docs/img/mode_uk.png), [script](docs/img/script_uk.png), [firmware](docs/img/firmware_uk.png), [C3](docs/img/c3_uk.png).
 
-The display (rendered by the host test; it follows the language chosen on the page, [Ukrainian](docs/img/display_uk.png)): the Client pages (network, device, traffic, system), then Router, Access point, and the button held past 5 s:
+The display (rendered by the host test, coloured as on a two-colour yellow/blue module; it follows the language chosen on the page, [Ukrainian](docs/img/display_uk.png)): the Client pages (mode and network, device, traffic, system), then Router, Access point, and the button held past 5 s:
 
 ![display pages](docs/img/display_en.png)
 

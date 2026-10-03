@@ -44,13 +44,21 @@ static uint32_t ip(int a, int b, int c, int d)
     return v;
 }
 
+/* Two-colour modules: the title stays in the top strip and nothing crosses
+ * the colour boundary (the last two rows above it stay dark). */
+static void strips(void)
+{
+    assert(lit(0, 0, UI_W, UI_TOP_H - 2) > 900);    /* title bar is lit */
+    assert(lit(0, UI_TOP_H - 2, UI_W, 2) == 0);
+    assert(lit(0, UI_TOP_H, UI_W, UI_H - UI_TOP_H) > 0);   /* some text below */
+}
+
 static void all_pages(const ui_info_t *in, const char *name)
 {
     int n = ui_page_count(in);
     for (int i = -1; i <= n; i++) {                 /* out-of-range indexes wrap */
         ui_render_page(fb, in, i);
-        assert(lit(0, 0, UI_W, 10) > 600);          /* title bar is lit */
-        assert(lit(0, 11, UI_W, 53) > 0);           /* some text below */
+        strips();
         if (i >= 0 && i < n) {
             char nm[64];
             snprintf(nm, sizeof(nm), "%s_%d", name, i + 1);
@@ -101,7 +109,7 @@ static void pages_in(const char *lang, const char *const eth[4])
     in.mgmt_ip = in.dev_ip = ip(192, 168, 1, 50); in.eth_up = true; in.dev_known = true;
     in.eth_speed = 100; in.eth_full = true;
     memcpy(in.dev_mac, "\x00\x11\x22\x33\x44\x55", 6);
-    in.to_wifi_bytes = 3456789; in.to_eth_bytes = 51200; in.dropped = 3; in.tx_errors = 0; in.foreign = 0;
+    in.to_wifi_bytes = 3456789; in.to_eth_bytes = 51200; in.dropped = 3; in.tx_errors = 0;
     assert(ui_page_count(&in) == 4);
     all_pages(&in, "client");
 
@@ -148,11 +156,24 @@ static void pages_in(const char *lang, const char *const eth[4])
     uint32_t holds[] = { 1200, 3000, 6000, 12000 };
     for (int i = 0; i < 4; i++) {
         ui_render_hold(fb, holds[i]);
+        strips();
         char nm[32]; snprintf(nm, sizeof(nm), "hold_%lu", (unsigned long)holds[i]);
         save(nm);
     }
     ui_render_notice(fb, ui_tr("disp.tReset"), ui_tr("disp.erasing"), ui_tr("disp.restarting"), NULL);
+    strips();
     save("notice");
+
+    /* label and value on one line: the longest values still fit */
+    {
+        char b[96];
+        ui_trf(b, sizeof(b), "disp.mac", "v", "AA:BB:CC:DD:EE:FF", NULL);
+        assert(ui_utf8_len(b) <= UI_COLS);
+        ui_trf(b, sizeof(b), "disp.ip", "v", ui_tr("disp.waitDhcp"), NULL);
+        assert(ui_utf8_len(b) <= UI_COLS);
+        ui_trf(b, sizeof(b), "disp.dhcp", "v", ui_tr("disp.uplinkFallback"), NULL);
+        assert(ui_utf8_len(b) <= UI_COLS);
+    }
 
 }
 

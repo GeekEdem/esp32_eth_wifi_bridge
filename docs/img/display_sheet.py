@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Display pages for the READMEs: the .pbm screens written by
 wt32/test/disp_ui_test (run with a directory argument; one set per language)
--> docs/img/display_<lang>.png.
+-> docs/img/display_<lang>.png, coloured as on a two-colour module (the top
+16 rows yellow, the rest blue).
 Usage: display_sheet.py PBM_DIR [LANG...]   (default: en uk; needs Pillow)"""
 import glob
 import os
@@ -10,14 +11,18 @@ from PIL import Image, ImageDraw
 
 PICK = ['client_1', 'client_2', 'client_3', 'client_4', 'router_1', 'router_2', 'ap_1', 'hold_6000']
 SCALE, PAD, BEZEL = 3, 24, 10
+TOP_H = 16                                          # UI_TOP_H in disp_ui.h
+YELLOW, BLUE = (255, 214, 40), (90, 190, 255)
 
 
 def load(d, name):
     path = glob.glob(os.path.join(d, '[0-9][0-9]_%s.pbm' % name))[0]
     img = Image.open(path).convert('L')             # P4: 1 = black ink -> lit pixel on the OLED
     lit = img.point(lambda v: 255 if v == 0 else 0)
+    ink = Image.new('RGB', img.size, BLUE)
+    ink.paste(YELLOW, (0, 0, img.width, TOP_H))
     oled = Image.new('RGB', img.size, (8, 10, 14))
-    oled.paste((225, 240, 255), mask=lit)
+    oled.paste(ink, mask=lit)
     return oled.resize((img.width * SCALE, img.height * SCALE), Image.NEAREST)
 
 
