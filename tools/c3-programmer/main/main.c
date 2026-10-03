@@ -78,6 +78,12 @@ static void button_task(void *arg)
     gpio_config(&io);
 
     const TickType_t step = pdMS_TO_TICKS(20);
+    /* Down already at start is not a press: the >= 10 s hold below restarts
+     * the C3 with the button still held, and the rest of that hold counted
+     * as a new one restarted the WT32 on release (seen on hardware). */
+    do {
+        vTaskDelay(step);
+    } while (gpio_get_level(gpio) == 0);
     while (true) {
         vTaskDelay(step);
         if (gpio_get_level(gpio) != 0) {
