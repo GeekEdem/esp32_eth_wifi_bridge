@@ -4,7 +4,7 @@
 
 This component runs **one** user script in [Berry](https://github.com/berry-lang/berry), a lightweight language for microcontrollers (used by Tasmota). The script is written and started on the device's web page, in the **Script (Berry)** section (its texts: [`i18n/`](i18n/)).
 
-> Status: built into the WT32 firmware; the language side (prelude, timers, limits, errors) has been tested on a PC with real Berry and this configuration, and the page in a browser. **Not verified** on hardware.
+> Status: built into the WT32 firmware; the language side (prelude, timers, limits, errors) has been tested on a PC with real Berry and this configuration, and the page in a browser. **Verified on hardware** on WT32 0.8.0 (items 30–34 of the checklist in [`wt32/README.md`](../../wt32/README.md)): the example, the time limit, autostart, memory use.
 
 ## Script API
 
