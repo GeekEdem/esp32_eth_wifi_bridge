@@ -4,7 +4,7 @@
 
 Main firmware. The WT32 is connected by cable to **one** device (any device) and gives it Wi-Fi (or, in Access point mode, shares the router's network from the cable over Wi-Fi). The firmware knows nothing about the device and does not change its data — it only forwards frames.
 
-> Status: built (ESP-IDF 6.1); the forwarding, management port and script logic is tested on a PC, the page in a browser against a mock API. **On hardware** (0.8.2 and earlier): Client mode with a device (link, device MAC/IP, ping, normal use, longer transfers, a WT32 restart, the page on the management port), the firmware update through the page with rollback confirmation, and Berry scripts (checklist items 1, 3–5, 8, 10–12, 27–34); see [Bench results](#bench-results-2026-09-30--2026-10-03). The display shows its pages (item 35); Router and Access point modes and the button are not verified yet.
+> Status: built (ESP-IDF 6.1); the forwarding, management port and script logic is tested on a PC, the page in a browser against a mock API. **On hardware** (0.8.2 and earlier): Client mode with a device (link, device MAC/IP, ping, normal use, longer transfers, a WT32 restart, the page on the management port), the firmware update through the page with rollback confirmation, and Berry scripts (checklist items 1–5, 8, 10–13, 27–38, 41); see [Bench results](#bench-results-2026-09-30--2026-10-03). The display and the button (items 35–38, 41) and mDNS (`wt32.local`) work too; Router and Access point modes and the button's 5 s / 10 s actions are not verified yet.
 
 ## Three modes (chosen on the page, applied after a restart)
 
@@ -127,18 +127,18 @@ Result: ✅ verified on hardware, with the WT32 firmware version it was verified
 | # | Action | Expected | Result |
 |---|---|---|---|
 | 1 | Turn the device on | Ethernet — link up, the device MAC appears, then its IP | ✅ 0.7.0 |
-| 2 | Router's client list | a new client with the **WT32 station MAC** and the IP shown on the page | |
+| 2 | Router's client list | a new client with the **WT32 station MAC** and the IP shown on the page | ✅ 0.8.4: the station MAC with the device's IP, by DHCP |
 | 3 | From a PC: `ping <IP>` | replies | ✅ 0.7.0; 0.8.0: 4–9 ms |
 | 4 | Normal use of the device at `<IP>` | works | ✅ 0.7.0 |
 | 5 | Longer transfer (large file, several jobs in a row) | works without interruptions | ✅ 0.8.0 (a PC as the device): 20 s each way, 6.8 / 7.8 Mbit/s, 0 % ping loss (see Bench results) |
-| 6 | Vendor utility → search for the device on the network | finds it / doesn't (write down) | |
+| 6 | Vendor utility → search for the device on the network | finds it / doesn't (write down) | 0.8.4: the test printer's utility does not find it (cause not investigated yet) |
 | 7 | Turn the device off and on | same IP (only with a DHCP reservation for the WT32 station MAC on the router), normal use works | not met on 0.8.0: the router gave the printer a different address after a power cycle (no reservation) |
 | 8 | Restart the WT32 (device stays on) | connection comes back without restarting the device | ✅ 0.7.2, 0.8.0: link back in 3.3 s, the device redoes DHCP, router reachable at 5.1 s |
 | 9 | Restart the router | connection comes back by itself | |
 | 10 | From a PC open `http://<IP>:28480`, log in | WT32 page; the **WT32 management traffic** counter grows; the `WT32-Setup` access point is gone | ✅ 0.7.1 |
 | 11 | Use the device (item 4) with the page from item 10 open | works, the page keeps updating | ✅ 0.8.0: the page kept updating through a 30 s 7.5 Mbit/s transfer |
 | 12 | If the device has a web page: `http://<IP>` | the **device's** page opens, not the WT32's | ✅ 0.8.0: the printer's own page on :80; the WT32 page only on :28480 |
-| 13 | Change the page password, log out, log in with the new one | works; the old password is rejected | |
+| 13 | Change the page password, log out, log in with the new one | works; the old password is rejected | ✅ 0.8.4 |
 
 **Router mode**
 
@@ -186,12 +186,12 @@ Result: ✅ verified on hardware, with the WT32 firmware version it was verified
 | # | Action | Expected | Result |
 |---|---|---|---|
 | 35 | Power on the WT32 with the display | log `SSD1306 at 0x3C` (or 0x3D); the display shows the first page (titled with the mode), text is readable, not mirrored | ✅ 0.8.2: readable, not mirrored (log line not captured); a two-colour module cut the first line at the colour boundary; 0.8.4: the title in the yellow strip, the lines below it |
-| 36 | Press the button briefly, repeatedly | pages cycle, the number is in the title | |
-| 37 | Leave it for 1 min; then press | the display turns off; the first press only turns it on | |
-| 38 | Hold for 3 s and release | the display shows "Hold until 5 s:" and a bar; nothing happens after release | |
+| 36 | Press the button briefly, repeatedly | pages cycle, the number is in the title | ✅ 0.8.4 |
+| 37 | Leave it for 1 min; then press | the display turns off; the first press only turns it on | ✅ 0.8.4 |
+| 38 | Hold for 3 s and release | the display shows "Hold until 5 s:" and a bar; nothing happens after release | ✅ 0.8.4 |
 | 39 | Hold for 6 s and release | restart; `WT32-Setup-XXXX` access point, the page shows "One-time setup start"; another restart — the saved mode | |
 | 40 | Hold for 11 s and release | "RESET the settings", restart; Client mode with no network, page password `12345678` | |
-| 41 | On the page switch EN ↔ УКР; then restart the WT32 | the display changes language within a second; after the restart it keeps the last choice | page part only, 0.8.0: the language survives a restart; the display part is not verified |
+| 41 | On the page switch EN ↔ УКР; then restart the WT32 | the display changes language within a second; after the restart it keeps the last choice | ✅ 0.8.4; 0.8.0: the page's language survives a restart |
 
 ### Bench results (2026-09-30 … 2026-10-03)
 
@@ -204,8 +204,8 @@ WT32-ETH01 (ESP32-D0WD rev 1.0, 4 MB) wired to the C3 SuperMini programmer as in
 - **Memory (item 34):** with the example script running, script memory 7.8–8.3 KB (peak 12.8 KB) of 40 KB; free on the device 108–116 KB as shown in the Script section, 123–124 KB from the script's `heap()` (the two figures differ; see 0.8.1).
 - **Power:** see the power note in [`docs/WIRING.md`](../docs/WIRING.md): powered from the programmer's 5 V, the WT32 brownout-reset in a loop as soon as Wi-Fi started with the Ethernet link up.
 - **Re-test on WT32 0.8.1 and C3 0.4.2 (2026-10-03):** no false "another network" warning on boot, the setup access point goes off 4.7 s after DHCP; "Free on the device" 123.2 KB against 123 KB from `heap()`, lowest since start 97.4 KB; the script console under 40 s of 7.9 Mbit/s with two stop/start cycles showed no repeated lines (start #1..#3); WT32 management frames under that load: 2 transmit errors (last `ESP_ERR_NO_MEM`, waited 4), against 114 on 0.8.0. C3 0.4.2 with the RFC2217 connection routed through the WT32 on purpose (routing pitfall, [`docs/WIRING.md`](../docs/WIRING.md)): the EN watchdog released EN, the WT32 and its link were back in 6–10 s, but a new RFC2217 client got in only after 31–34 s (cause found and fixed in C3 0.4.5: 15–17 s, see the C3 README).
-- **WT32 0.8.2 and C3 0.4.5 (2026-10-03):** 0.8.1 crashed ~3.7 s after boot (`assert failed: xQueueSemaphoreTake … (( pxQueue ))`, then a restart) when the device's address was known that early: reproduced 2 of 2 with the PC as the device after a reset out of the ROM bootloader (the Client-mode task registered mDNS while `mdns_init()` was still running). 0.8.2: the same sequence 5 of 5 without an assert, the management address set at 3.7 s. Through the bridge (the PC's Wi-Fi on 5 GHz, the WT32 on 2.4 GHz, RSSI −63…−65 dBm), 20 s each way: 7.0 Mbit/s device → Wi-Fi (ping ~17 ms, 1 of 18 lost), 11.4 Mbit/s Wi-Fi → device (ping ~77 ms, max 175 ms), 0 transmit errors, 15 frames waited for Wi-Fi. WT32 restart with the device on: link back at 3.1 s, router reachable at 5.0 s. mDNS on the management address got no reply to 10 queries in Client mode (0.8.1 and 0.8.2 alike; the WT32's management transmit counter did not move): the mDNS library had no free interface slot, fixed in 0.8.3. On 0.8.4: 3 of 3 queries answered from the shared address — `wt32.local` → the device's IP, `WT32._http._tcp` on port 28480 — and Windows resolves `wt32.local` too. The C3's USB fallback path works (see the C3 README). Powered from the C3's 5 V the WT32 ran without the Ethernet cable (minutes, no reset) and brownout-looped every ~2.5 s when it started with the link up; the C3's own Wi-Fi off made no difference. On the same supply, with the cable plugged in after the boot, 0.8.4 kept the link for over 20 min without a reset: the dip is the radio calibration at start-up on top of the link. The display was found once its wiring was fixed (first `no display at 0x3C/0x3D`).
-- **Not tested on hardware yet:** items 2, 6, 9, 13; Router and Access point modes (14–26); the display and button (36–40; 41 only on the page).
+- **WT32 0.8.2 and C3 0.4.5 (2026-10-03):** 0.8.1 crashed ~3.7 s after boot (`assert failed: xQueueSemaphoreTake … (( pxQueue ))`, then a restart) when the device's address was known that early: reproduced 2 of 2 with the PC as the device after a reset out of the ROM bootloader (the Client-mode task registered mDNS while `mdns_init()` was still running). 0.8.2: the same sequence 5 of 5 without an assert, the management address set at 3.7 s. Through the bridge (the PC's Wi-Fi on 5 GHz, the WT32 on 2.4 GHz, RSSI −63…−65 dBm), 20 s each way: 7.0 Mbit/s device → Wi-Fi (ping ~17 ms, 1 of 18 lost), 11.4 Mbit/s Wi-Fi → device (ping ~77 ms, max 175 ms), 0 transmit errors, 15 frames waited for Wi-Fi. WT32 restart with the device on: link back at 3.1 s, router reachable at 5.0 s. mDNS on the management address got no reply to 10 queries in Client mode (0.8.1 and 0.8.2 alike; the WT32's management transmit counter did not move): the mDNS library had no free interface slot, fixed in 0.8.3. On 0.8.4: 3 of 3 queries answered from the shared address — `wt32.local` → the device's IP, `WT32._http._tcp` on port 28480 — and Windows resolves `wt32.local` too; with the printer as the device a phone opens `http://wt32.local:28480`. The C3's USB fallback path works (see the C3 README). Powered from the C3's 5 V the WT32 ran without the Ethernet cable (minutes, no reset) and brownout-looped every ~2.5 s when it started with the link up; the C3's own Wi-Fi off made no difference. On the same supply, with the cable plugged in after the boot, 0.8.4 kept the link for over 20 min without a reset: the dip is the radio calibration at start-up on top of the link. The display was found once its wiring was fixed (first `no display at 0x3C/0x3D`).
+- **Not tested on hardware yet:** items 7 (with a reservation), 9; Router and Access point modes (14–26); the button's 5 s and 10 s actions (39–40).
 
 If something does not work, attach the filled-in tables, screenshots of the page and a few lines of the log to an issue.
 
