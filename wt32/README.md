@@ -67,6 +67,7 @@ A 0.96″ 128×64 I2C OLED (SSD1306) and one button. Everything works without th
 | Button | between **IO4** and GND (internal pull-up, no resistor needed) |
 
 - The display is detected automatically at address 0x3C or 0x3D (in the log: `SSD1306 at 0x3C`). It turns off after 60 s without a press (an OLED burns in from a static image).
+- At power-on it shows the start screen within a second (0.8.5): **Starting** with the version, what is starting now (Ethernet, Wi-Fi, the web page, the script) and a bar with a block running through it, so even a long step shows that the WT32 is alive. The pages follow when the start is done, a few seconds later (the Ethernet start alone waits up to 4 s for a link).
 - Pages: the first is titled with the mode — **Client**, **Router**, **Access point** (**Setup** after the one-time setup start) — and shows Wi-Fi, the signal or the number of clients, and the WT32 page address; **Device** (Ethernet with the negotiated speed and duplex, e.g. `Ethernet: 100M full`, MAC, IP; in Access point mode — **Cable**: Ethernet, router DHCP, gateway), **Traffic** (Client), **Script** (the script's first 4 `output()` values, if any), **System** (version, memory, uptime, the 5-s button hint).
 - Two-colour modules (the top 16 rows yellow, the rest blue) are fine: the title bar stays in the yellow strip and the four lines below it (0.8.4; up to 0.8.3 the first line crossed the colour boundary). Single-colour modules show the same layout.
 - **Button** (acts on release; while you hold it, the display shows what will happen):
@@ -193,6 +194,7 @@ Result: ✅ verified on hardware, with the WT32 firmware version it was verified
 | 39 | Hold for 6 s and release | restart; `WT32-Setup-XXXX` access point, the page shows "One-time setup start"; another restart — the saved mode | ✅ 0.8.4: log `one-time setup start (button)`, the setup AP; after the next restart the saved mode again |
 | 40 | Hold for 11 s and release | "RESET the settings", restart; Client mode with no network, page password `12345678` | ✅ 0.8.4: settings erased, setup AP only, default page password, script autostart off, the script text kept (its partition unchanged byte for byte) |
 | 41 | On the page switch EN ↔ УКР; then restart the WT32 | the display changes language within a second; after the restart it keeps the last choice | ✅ 0.8.4; 0.8.0: the page's language survives a restart |
+| 42 | Power on the WT32 with the display (0.8.5) | within a second: **Starting** with the version, the step being started and a moving bar; then the first page | |
 
 ### Bench results (2026-09-30 … 2026-10-04)
 
@@ -238,7 +240,7 @@ cc -Wall -Wextra -fsanitize=address,undefined -I../main -o /tmp/l2t l2rewrite_te
 cc -Wall -Wextra -fsanitize=address,undefined -I../main -o /tmp/dmx mgmt_demux_test.c ../main/mgmt_demux.c && /tmp/dmx
 # Berry: example, timers, time and memory limits, syntax errors
 ../../shared/script_berry/test/run_host_test.sh
-# button (debounce, press length, held at startup) and display (UTF-8, every page of every mode);
+# button (debounce, press length, held at startup) and display (UTF-8, every page of every mode, the start screen);
 # with a directory argument, disp_ui_test writes each screen to a .pbm file for viewing
 cc -Wall -Wextra -fsanitize=address,undefined -I../main -o /tmp/btn button_test.c ../main/button.c && /tmp/btn
 cc -Wall -Wextra -fsanitize=address,undefined -I../main -o /tmp/dui disp_ui_test.c ../main/disp_ui.c ../main/font6x10.c ../main/button.c && /tmp/dui

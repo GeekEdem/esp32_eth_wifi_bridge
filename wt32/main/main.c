@@ -210,6 +210,22 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
+    /* The display first: its start screen shows at once what is starting (the
+     * rest takes seconds, the Ethernet start alone up to 4 s without a link). */
+    const portal_lang_t *lang = setup_portal_lang();       /* the language chosen on the page */
+    const display_config_t disp = {
+        .texts = lang ? lang->json : NULL,
+        .texts_len = lang ? lang->json_len : 0,
+        .sda_gpio = CONFIG_WT32_I2C_SDA_GPIO,
+        .scl_gpio = CONFIG_WT32_I2C_SCL_GPIO,
+        .button_gpio = CONFIG_WT32_BUTTON_GPIO,
+        .timeout_s = CONFIG_WT32_DISPLAY_TIMEOUT_S,
+        .fill = fill_info,
+        .on_setup = on_setup,
+        .on_reset = on_reset,
+    };
+    ESP_ERROR_CHECK(display_boot(&disp));
+
     s_setup_boot = s_setup_boot_flag == SETUP_BOOT_MAGIC && esp_reset_reason() == ESP_RST_SW;
     s_setup_boot_flag = 0;
 
@@ -224,13 +240,15 @@ void app_main(void)
         set.mode = WT32_MODE_CLIENT;
     }
 
+    display_boot_step(0, set.mode == WT32_MODE_CLIENT ? "disp.bootEth" : "disp.bootNet");
     esp_eth_handle_t eth;
     ESP_ERROR_CHECK(eth_init(&eth));
 
     if (set.mode != WT32_MODE_CLIENT) {
-        ESP_ERROR_CHECK(own_mode_start(eth, &set));
+        ESP_ERROR_CHECK(own_mode_start(eth, &set));         /* its access point and the Ethernet */
     } else {
         ESP_ERROR_CHECK(client_mode_start(eth));
+        display_boot_step(1, "disp.bootWifi");
         const wifi_setup_config_t wifi = {
             .ap_prefix = "WT32-Setup",
             .default_ssid = CONFIG_WT32_WIFI_SSID,
@@ -245,9 +263,11 @@ void app_main(void)
          * answers on the management port on the setup AP. */
         mdns_service_port_set("_http", "_tcp", CONFIG_WT32_MGMT_PORT);
     }
+    display_boot_step(2, "disp.bootWeb");
     ESP_ERROR_CHECK(web_start(&set, s_setup_boot));
     s_mode = set.mode;
 
+    display_boot_step(3, "disp.bootScript");
     const script_config_t script = {
         .mem_limit = CONFIG_WT32_SCRIPT_MEM_KB * 1024,
         .time_limit_ms = 2000,
@@ -257,19 +277,7 @@ void app_main(void)
     ESP_ERROR_CHECK(script_start(&script));
     ESP_ERROR_CHECK(script_web_start());
 
-    const portal_lang_t *lang = setup_portal_lang();       /* the language chosen on the page */
-    const display_config_t disp = {
-        .texts = lang ? lang->json : NULL,
-        .texts_len = lang ? lang->json_len : 0,
-        .sda_gpio = CONFIG_WT32_I2C_SDA_GPIO,
-        .scl_gpio = CONFIG_WT32_I2C_SCL_GPIO,
-        .button_gpio = CONFIG_WT32_BUTTON_GPIO,
-        .timeout_s = CONFIG_WT32_DISPLAY_TIMEOUT_S,
-        .fill = fill_info,
-        .on_setup = on_setup,
-        .on_reset = on_reset,
-    };
-    ESP_ERROR_CHECK(display_start(&disp));
+    ESP_ERROR_CHECK(display_start(&disp));                 /* the start screen gives way to the pages */
 
     xTaskCreate(report_task, "report", 3072, (void *)(intptr_t)set.mode, 2, NULL);
 }

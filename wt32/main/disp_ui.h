@@ -83,6 +83,11 @@ void ui_render_hold(uint8_t *fb, uint32_t held_ms);
 /* A full-screen message: title bar and up to three lines (NULL = empty);
  * the bottom rows stay free for the hold screen's progress bar. */
 void ui_render_notice(uint8_t *fb, const char *title, const char *l1, const char *l2, const char *l3);
+/* The start screen, until the pages: the title bar with the version, what is
+ * starting now (NULL = nothing yet) and a bar with `step` of `steps` done; a
+ * block runs through the rest as `frame` counts up, so a long step still shows
+ * that the WT32 is alive. */
+void ui_render_boot(uint8_t *fb, const char *version, const char *what, int step, int steps, uint32_t frame);
 
 /* Language: the "disp.*" texts of a flat JSON object {"key":"text",...}.
  * Returns how many were taken, -1 if the JSON is malformed (texts unchanged). */

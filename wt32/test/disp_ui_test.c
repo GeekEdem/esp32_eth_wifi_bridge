@@ -164,6 +164,37 @@ static void pages_in(const char *lang, const char *const eth[4])
     strips();
     save("notice");
 
+    /* the start screen: each step; the done part of the bar is full, and a block of
+     * at most 12 px runs through the rest, inside the bar */
+    {
+        static const char *const keys[] = { "disp.bootEth", "disp.bootWifi", "disp.bootWeb", "disp.bootScript", NULL };
+        const int y = UI_H - 6, x1 = UI_W - 4;
+        for (int s = 0; s <= 4; s++) {
+            int x0 = 4 + s * (UI_W - 8) / 4, moved = 0, prev = -1;
+            for (uint32_t f = 0; f < 80; f++) {
+                ui_render_boot(fb, "0.8.5", keys[s] ? ui_tr(keys[s]) : NULL, s, 4, f);
+                strips();
+                assert(lit(4, y, x0 - 4, 1) == x0 - 4);
+                int block = lit(x0, y, x1 - x0, 1);
+                assert(block <= 12 && lit(x1, y, 4, 1) == 1);   /* only the bar's right edge past it */
+                int first = x0;
+                while (first < x1 && !ui_pixel(fb, first, y)) first++;
+                moved += block && prev >= 0 && first != prev;
+                prev = block ? first : -1;
+            }
+            assert(s == 4 || moved > 20);
+            ui_render_boot(fb, "0.8.5", keys[s] ? ui_tr(keys[s]) : NULL, s, 4, 10);
+            char nm[16]; snprintf(nm, sizeof(nm), "boot_%d", s);
+            save(nm);
+        }
+        ui_render_boot(fb, "0.8.5", ui_tr("disp.bootNet"), 0, 4, 7);
+        strips();
+        save("boot_net");
+        ui_render_boot(fb, NULL, NULL, -3, 0, 123456789);         /* out of range: no overrun */
+        ui_render_boot(fb, "0.8.5-very-long-version", NULL, 9, 4, 0);
+        strips();
+    }
+
     /* label and value on one line: the longest values still fit */
     {
         char b[96];

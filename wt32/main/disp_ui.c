@@ -534,16 +534,25 @@ static void system_lines(const ui_info_t *in, lines_t l)
     snprintf(l[3], LINE_LEN, "%s", ui_tr("disp.btn5"));
 }
 
-static void title(uint8_t *fb, const char *text, int index, int count)
+/* The title bar: text on the left, `right` (ASCII, may be empty) on the right. */
+static void title_bar(uint8_t *fb, const char *text, const char *right)
 {
     ui_fill(fb, 0, 0, UI_W, TITLE_H, true);
+    int rlen = (int)strlen(right);
+    if (rlen > UI_COLS / 2) {
+        rlen = UI_COLS / 2;
+    }
+    ui_text(fb, 1, TITLE_Y, text, UI_COLS - rlen - 1, true);
+    ui_text(fb, UI_W - 1 - rlen * FONT_W, TITLE_Y, right, rlen, true);
+}
+
+static void title(uint8_t *fb, const char *text, int index, int count)
+{
     char num[24] = "";
     if (count > 0) {
         snprintf(num, sizeof(num), "%d/%d", index + 1, count);
     }
-    int nlen = (int)strlen(num);
-    ui_text(fb, 1, TITLE_Y, text, UI_COLS - nlen - 1, true);
-    ui_text(fb, UI_W - 1 - nlen * FONT_W, TITLE_Y, num, nlen, true);
+    title_bar(fb, text, num);
 }
 
 static void body(uint8_t *fb, lines_t l)
@@ -609,6 +618,31 @@ static void bar(uint8_t *fb, uint32_t done, uint32_t total)
     ui_fill(fb, 2 + w - 1, y, 1, 7, true);
     int fill = total ? (int)((uint64_t)(done > total ? total : done) * (w - 4) / total) : 0;
     ui_fill(fb, 4, y + 2, fill, 3, true);
+}
+
+#define BOOT_BLOCK  12                  /* the running block on the start screen, px */
+#define BOOT_SPEED  4                   /* px per frame */
+
+void ui_render_boot(uint8_t *fb, const char *version, const char *what, int step, int steps, uint32_t frame)
+{
+    lines_t l;
+    memset(l, 0, sizeof(l));
+    snprintf(l[0], LINE_LEN, "%s", what ? what : "");
+    memset(fb, 0, UI_FB_SIZE);
+    title_bar(fb, ui_tr("disp.tBoot"), version ? version : "");
+    body(fb, l);
+    if (steps < 1) {
+        steps = 1;
+    }
+    step = step < 0 ? 0 : step > steps ? steps : step;
+    bar(fb, (uint32_t)step, (uint32_t)steps);
+    /* inside the bar (x 4 .. UI_W - 4, see bar()): the block runs through the part still to come */
+    int x0 = 4 + step * (UI_W - 8) / steps, x1 = UI_W - 4;
+    if (x1 - x0 > BOOT_BLOCK) {
+        int x = x0 - BOOT_BLOCK + (int)(frame * BOOT_SPEED % (uint32_t)(x1 - x0 + BOOT_BLOCK));
+        int a = x < x0 ? x0 : x, b = x + BOOT_BLOCK > x1 ? x1 : x + BOOT_BLOCK;
+        ui_fill(fb, a, UI_H - 8 + 2, b - a, 3, true);
+    }
 }
 
 void ui_render_hold(uint8_t *fb, uint32_t held_ms)

@@ -1,5 +1,10 @@
 {
   "disp.apClients": "Wi-Fi clients: {n}",
+  "disp.bootEth": "Ethernet…",
+  "disp.bootNet": "Wi-Fi and Ethernet…",
+  "disp.bootScript": "Script…",
+  "disp.bootWeb": "Web page…",
+  "disp.bootWifi": "Wi-Fi…",
   "disp.btn5": "Button 5 s: setup",
   "disp.bytes": "{n} B",
   "disp.cancel": "Release: cancel",
@@ -34,6 +39,7 @@
   "disp.setupAp": "setup access point",
   "disp.signal": "Signal: {n} dBm",
   "disp.tAp": "Access point",
+  "disp.tBoot": "Starting",
   "disp.tButton": "Button",
   "disp.tCable": "Cable",
   "disp.tClient": "Client",

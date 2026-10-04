@@ -1,5 +1,6 @@
-/* See display.h. One task samples the button every 20 ms and redraws the
- * screen twice a second while it is on. */
+/* See display.h. One task shows the start screen until display_start(), then
+ * samples the button every 20 ms and redraws the screen twice a second while
+ * it is on. */
 #include "display.h"
 
 #include <string.h>
@@ -7,6 +8,7 @@
 #include "button.h"
 #include "driver/gpio.h"
 #include "driver/i2c_master.h"
+#include "esp_app_desc.h"
 #include "esp_check.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -15,6 +17,7 @@
 
 #define TICK_MS     20
 #define REDRAW_MS   500
+#define BOOT_MS     60                      /* a frame of the start screen */
 #define I2C_HZ      400000
 
 static const char *TAG = "display";
@@ -26,6 +29,10 @@ static ui_info_t s_info;
 static portMUX_TYPE s_texts_lock = portMUX_INITIALIZER_UNLOCKED;
 static const char *s_texts_new;             /* a language waiting for the display task */
 static size_t s_texts_new_len;
+static bool s_booted;                       /* display_boot() done: probed, task running */
+static volatile bool s_running;             /* display_start() done: pages and the button */
+static volatile int s_boot_done;
+static const char *volatile s_boot_key;
 
 static esp_err_t cmds(const uint8_t *c, size_t n)
 {
@@ -149,8 +156,28 @@ static void take_texts(void)
     }
 }
 
+/* Until display_start(): what is starting, and a block running through the
+ * bar so that a long step (the Ethernet start waits up to 4 s for a link)
+ * still shows the WT32 is alive. */
+static void boot_screen(void)
+{
+    const char *version = esp_app_get_description()->version;
+    for (uint32_t frame = 0; !s_running; frame++) {
+        if (s_texts_new) {
+            take_texts();
+        }
+        const char *key = s_boot_key;
+        ui_render_boot(s_fb, version, key ? ui_tr(key) : NULL, s_boot_done, DISPLAY_BOOT_STEPS, frame);
+        flush();
+        vTaskDelay(pdMS_TO_TICKS(BOOT_MS));
+    }
+}
+
 static void ui_task(void *arg)
 {
+    if (s_dev) {
+        boot_screen();
+    }
     btn_t b;
     uint32_t t = now_ms();
     btn_init(&b, t);
@@ -222,11 +249,36 @@ static void ui_task(void *arg)
     }
 }
 
-esp_err_t display_start(const display_config_t *cfg)
+static void setup(const display_config_t *cfg)
 {
     s_cfg = *cfg;
     if (s_cfg.texts) {
         display_set_texts(s_cfg.texts, s_cfg.texts_len);    /* the task takes it first */
+    }
+    display_probe();
+}
+
+esp_err_t display_boot(const display_config_t *cfg)
+{
+    setup(cfg);
+    s_booted = true;
+    if (!s_dev) {
+        return ESP_OK;                              /* the button's task starts with display_start() */
+    }
+    return xTaskCreate(ui_task, "ui", 4096, NULL, 3, NULL) == pdPASS ? ESP_OK : ESP_ERR_NO_MEM;
+}
+
+void display_boot_step(int done, const char *key)
+{
+    s_boot_key = key;
+    s_boot_done = done;
+}
+
+esp_err_t display_start(const display_config_t *cfg)
+{
+    bool task = s_booted && s_dev;                  /* already running, on the start screen */
+    if (!s_booted) {
+        setup(cfg);
     }
     if (s_cfg.button_gpio >= 0) {
         gpio_config_t io = {
@@ -236,8 +288,8 @@ esp_err_t display_start(const display_config_t *cfg)
         };
         ESP_RETURN_ON_ERROR(gpio_config(&io), TAG, "button GPIO");
     }
-    display_probe();
-    if (!s_dev && s_cfg.button_gpio < 0) {
+    s_running = true;                               /* the start screen ends, the pages begin */
+    if (task || (!s_dev && s_cfg.button_gpio < 0)) {
         return ESP_OK;
     }
     return xTaskCreate(ui_task, "ui", 4096, NULL, 3, NULL) == pdPASS ? ESP_OK : ESP_ERR_NO_MEM;

@@ -21,6 +21,17 @@ typedef struct {
     size_t texts_len;
 } display_config_t;
 
+#define DISPLAY_BOOT_STEPS 4
+
+/* Early in app_main, before the slow parts of the start: finds the display
+ * and shows the start screen (what is starting, a moving bar) until
+ * display_start(). Optional. */
+esp_err_t display_boot(const display_config_t *cfg);
+/* The start step now running: `done` of DISPLAY_BOOT_STEPS are done, `key` is
+ * its "disp.*" text (a string literal). */
+void display_boot_step(int done, const char *key);
+
+/* The pages and the button; after display_boot() its cfg is the one used. */
 esp_err_t display_start(const display_config_t *cfg);
 
 /* Another language (the JSON must stay valid, e.g. the built-in bundle);

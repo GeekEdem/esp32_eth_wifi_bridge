@@ -1,5 +1,10 @@
 {
   "disp.apClients": "Клієнтів Wi-Fi: {n}",
+  "disp.bootEth": "Ethernet…",
+  "disp.bootNet": "Wi-Fi та Ethernet…",
+  "disp.bootScript": "Скрипт…",
+  "disp.bootWeb": "Веб-сторінка…",
+  "disp.bootWifi": "Wi-Fi…",
   "disp.btn5": "Кнопка 5 с: налашт.",
   "disp.bytes": "{n} Б",
   "disp.cancel": "Відпустіть: скасувати",
@@ -34,6 +39,7 @@
   "disp.setupAp": "точка налаштування",
   "disp.signal": "Сигнал: {n} дБм",
   "disp.tAp": "Точка доступу",
+  "disp.tBoot": "Запуск",
   "disp.tButton": "Кнопка",
   "disp.tCable": "Кабель",
   "disp.tClient": "Клієнт",
