@@ -13,13 +13,13 @@ SCENE = '''
 module m(n) import(str("%(c)s/", n, ".stl"));
 %(case)s
 '''
-INSIDE = 'color("#d0d0d0") m("usb"); color("#202020") m("switch"); color("#3050c0") m("oled");'
+INSIDE = 'color("#d0d0d0") m("usb"); color("#202020") m("switch"); color("#e08a2e") m("cap"); color("#3050c0") m("oled");'
 
 
 def scad(path, board, case, out, camera, size=(1400, 1000)):
     with open(path, 'w') as f:
-        f.write(SCENE % dict(c=os.path.dirname(path), case=case))
-    cmd = ['openscad', '-q', '--imgsize=%d,%d' % size,
+        f.write(SCENE % dict(c=os.path.dirname(path).replace('\\', '/'), case=case))   # "\" escapes in OpenSCAD strings
+    cmd = [os.environ.get('OPENSCAD', 'openscad'), '-q', '--imgsize=%d,%d' % size,
            '--camera=' + camera, '--colorscheme=Tomorrow', '-o', out, path]
     if not os.environ.get('DISPLAY') and shutil.which('xvfb-run'):
         cmd = ['xvfb-run', '-a'] + cmd
@@ -33,14 +33,14 @@ def sections(here, out, step):
     import build_case as B
     c = os.path.join(here, '.cache')
     load = lambda n: trimesh.load(os.path.join(c, n + '.stl'))
-    case = {'base': load('base_asm'), 'lid': load('lid_asm'), 'button': load('button_asm')}
+    case = {'base': load('base_asm'), 'lid': load('lid_asm')}
     inner = {'WT32' + (' (STEP)' if step else ''): load('wt32_step' if step else 'wt32'),
-             'OLED': load('oled'), 'USB-C': load('usb'), 'switch': load('switch')}
-    colors = {'base': '#4a6fa5', 'lid': '#7fa3d0', 'button': '#e08a2e', 'OLED': '#3050c0',
+             'OLED': load('oled'), 'USB-C': load('usb'), 'switch': load('switch'), 'button cap': load('cap')}
+    colors = {'base': '#4a6fa5', 'lid': '#7fa3d0', 'button cap': '#e08a2e', 'OLED': '#3050c0',
               'USB-C': '#888888', 'switch': '#222222'}
     cuts = [('x', B.XC, 'lengthwise section through the middle (x = %.1f)' % B.XC),
             ('y', (B.RJ['y0'] + B.RJ['y1']) / 2, 'cross-section through the RJ45 and USB-C'),
-            ('y', B.OLED_Y0 + B.OLED['h'] / 2, 'cross-section through the display')]
+            ('y', B.OY0 + B.LEDGE['len'] / 2, 'cross-section through the display and its ledges')]
     fig, axes = plt.subplots(len(cuts), 1, figsize=(12, 13), gridspec_kw=dict(height_ratios=[1, 1, 1]))
     for ax, (axis, v, title) in zip(axes, cuts):
         normal = [1, 0, 0] if axis == 'x' else [0, 1, 0]
@@ -72,16 +72,19 @@ def render(here, step):
         import build_case as B
         trimesh.util.concatenate(B.load_step()).export(os.path.join(c, 'wt32_step.stl'))
     board = 'color("#2e8b57") m("%s");' % ('wt32_step' if step else 'wt32')
-    closed = board + INSIDE + 'color("#4a6fa5") m("base_asm"); color("#4a6fa5") m("lid_asm"); color("#e08a2e") m("button_asm");'
-    ghost = board + INSIDE + 'color("#4a6fa5", 0.35) m("base_asm"); color("#e08a2e") m("button_asm"); color("#7fa3d0", 0.2) m("lid_asm");'
-    # base without the lid: the board, USB-C and the switch in its post
-    open_ = board + 'color("#d0d0d0") m("usb"); color("#202020") m("switch"); color("#4a6fa5") m("base_asm");'
-    # the lid turned over: the OLED on its pegs and the plunger
-    lid = 'rotate([180, 0, 0]) { color("#7fa3d0") m("lid_asm"); color("#3050c0") m("oled"); color("#e08a2e") m("button_asm"); }'
+    closed = board + INSIDE + 'color("#4a6fa5") m("base_asm"); color("#4a6fa5") m("lid_asm");'
+    ghost = board + INSIDE + 'color("#4a6fa5", 0.35) m("base_asm"); color("#7fa3d0", 0.2) m("lid_asm");'
+    # base without the lid: the board, USB-C and the switch on its post
+    open_ = board + 'color("#d0d0d0") m("usb"); color("#202020") m("switch"); color("#e08a2e") m("cap"); color("#4a6fa5") m("base_asm");'
+    # the same with the display on its ledges
+    display = open_ + 'color("#3050c0") m("oled");'
+    # the lid turned over: the pocket for the display glass, the window and the cap's hole
+    lid = 'rotate([180, 0, 0]) color("#7fa3d0") m("lid_asm");'
     views = [('outside', closed, '75,-80,70,0,-5,2'),
              ('rj45_end', closed, '-30,-110,25,0,-5,2'),
              ('inside', ghost, '80,-60,90,0,0,0'),
              ('open', open_, '-60,-40,100,0,0,-3'),
+             ('display', display, '-60,-40,100,0,0,-3'),
              ('lid_underside', lid, '70,-60,45,0,-5,-17')]
     for name, case, cam in views:
         scad(os.path.join(c, 'scene_%s.scad' % name), board, case, os.path.join(img, name + '.png'), cam)
